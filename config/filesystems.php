@@ -41,7 +41,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL'), '/').'/storage',
+            'url' => ($url = env('AWS_URL')) ? rtrim($url, '/') : null,
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
