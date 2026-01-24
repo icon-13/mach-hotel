@@ -1,33 +1,37 @@
 #!/bin/sh
 set -e
 
-# Render provides $PORT
 : "${PORT:=10000}"
 
-# Generate nginx config from template (insert PORT)
+# Nginx config
 sed "s/__PORT__/${PORT}/g" /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
-# Demo-friendly: reset sqlite each deploy (avoids half-migrated DB)
+# Ensure writable dirs for Laravel
+mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs database || true
+chown -R www-data:www-data storage bootstrap/cache database || true
+chmod -R 775 storage bootstrap/cache database || true
+
+# Fresh demo DB each deploy (optional but keeps it clean)
 rm -f database/database.sqlite || true
 touch database/database.sqlite
+chown www-data:www-data database/database.sqlite || true
+chmod 664 database/database.sqlite || true
 
-# Ensure Laravel can write logs (common 500 fix)
-mkdir -p storage/logs || true
+# Logs
 touch storage/logs/laravel.log || true
-chmod -R 775 storage bootstrap/cache storage/logs || true
+chown www-data:www-data storage/logs/laravel.log || true
+chmod 664 storage/logs/laravel.log || true
 
-# Run migrations
-php artisan migrate --force || true
+# Run migrations as www-data (avoids root-owned sqlite)
+su -s /bin/sh www-data -c "php artisan migrate --force" || true
 
-# Clear caches (common 500 fix)
-php artisan config:clear || true
-php artisan cache:clear || true
-php artisan view:clear || true
-php artisan route:clear || true
+# Clear caches (safe)
+su -s /bin/sh www-data -c "php artisan config:clear" || true
+su -s /bin/sh www-data -c "php artisan cache:clear" || true
+su -s /bin/sh www-data -c "php artisan view:clear" || true
+su -s /bin/sh www-data -c "php artisan route:clear" || true
 
-# Print last Laravel logs to Render logs (so 500 is visible)
 echo "---- Last Laravel log ----"
 tail -n 120 storage/logs/laravel.log || true
 
-# Start supervisor (runs nginx + php-fpm)
 exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf
