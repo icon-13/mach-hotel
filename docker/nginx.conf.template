@@ -3,8 +3,25 @@ server {
     server_name _;
 
     root /var/www/html/public;
-    index index.php index.html;
+    index index.php;
 
+    # Serve Vite build assets directly (CSS/JS)
+    location ^~ /build/ {
+        try_files $uri =404;
+        access_log off;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+    }
+
+    # Serve common static assets directly
+    location ~* \.(?:css|js|map|png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|eot)$ {
+        try_files $uri =404;
+        access_log off;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+    }
+
+    # Laravel routes
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
