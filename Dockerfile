@@ -20,10 +20,15 @@ RUN apt-get update && apt-get install -y \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
+
+# Copy project files
 COPY . .
 
-# Install deps
+# Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Start app
-CMD sh -c "php artisan migrate --force || true; php artisan serve --host 0.0.0.0 --port $PORT"
+# ✅ Demo-friendly start:
+# - Reset SQLite DB each deploy (avoids half-migrated states)
+# - Run migrations
+# - Start server on Render port
+CMD sh -c "rm -f database/database.sqlite && touch database/database.sqlite && php artisan migrate --force || true; php artisan serve --host 0.0.0.0 --port $PORT"
