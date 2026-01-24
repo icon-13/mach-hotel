@@ -1,34 +1,41 @@
-FROM php:8.3-cli
+FROM php:8.3-fpm
 
-# System deps + PHP extensions commonly needed by Laravel & Composer
+# System deps
 RUN apt-get update && apt-get install -y \
-    git unzip zip libzip-dev \
-    libsqlite3-dev \
-    libicu-dev \
+    nginx supervisor git unzip zip libzip-dev \
+    libsqlite3-dev libicu-dev \
     libpng-dev libjpeg-dev libfreetype6-dev \
-    libonig-dev \
+    libonig-dev curl \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
-        pdo pdo_sqlite \
-        mbstring \
-        intl \
-        zip \
-        gd \
+        pdo pdo_sqlite mbstring intl zip gd \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Composer
+# ---- Node.js (for Vite build) ----
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
-
-# Copy project files
 COPY . .
 
-# Install PHP dependencies
+# Install PHP deps
 RUN composer install --no-dev --optimize-autoloader
 
-# ✅ Demo-friendly start:
-# - Reset SQLite DB each deploy (avoids half-migrated states)
-# - Run migrations
-# - Start server on Render port
-CMD sh -c "rm -f database/database.sqlite && touch database/database.sqlite && php artisan migrate --force || true; php artisan serve --host 0.0.0.0 --port $PORT"
+# Install JS deps & build assets
+RUN npm install && npm run build
+
+# Permissions (fixes 500 + asset access)
+RUN chown -R www-data:www-data /var/www/html \
+ && chmod -R 775 storage bootstrap/cache
+
+# Nginx + supervisor
+COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/start.sh /start.sh
+RUN chmod +x /start.sh
+
+EXPOSE 10000
+CMD ["/start.sh"]
