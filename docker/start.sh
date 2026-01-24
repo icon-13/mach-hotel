@@ -11,16 +11,17 @@ mkdir -p storage/framework/cache storage/framework/sessions storage/framework/vi
 chown -R www-data:www-data storage bootstrap/cache database || true
 chmod -R 775 storage bootstrap/cache database || true
 
-# Fresh sqlite (demo)
+# Fresh sqlite each deploy (demo)
 rm -f database/database.sqlite || true
 touch database/database.sqlite
 chown www-data:www-data database/database.sqlite || true
 chmod 664 database/database.sqlite || true
 
-# Migrate as www-data
+# Migrate + Seed as www-data
 su -s /bin/sh www-data -c "php artisan migrate --force" || true
+su -s /bin/sh www-data -c "php artisan db:seed --force" || true
 
-# Cache rebuild (production-ish)
+# Clear caches
 su -s /bin/sh www-data -c "php artisan config:clear" || true
 su -s /bin/sh www-data -c "php artisan route:clear" || true
 su -s /bin/sh www-data -c "php artisan view:clear" || true
