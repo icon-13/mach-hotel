@@ -163,12 +163,12 @@
 {{-- ✅ GALLERY --}}
 @php
   $gallery = [
-    ['src' => asset('gallery/1.WebP'), 'alt' => 'Mach Hotel front view'],
-    ['src' => asset('gallery/2.WebP'), 'alt' => 'Mach Hotel suites'],
-    ['src' => asset('gallery/3.WebP'), 'alt' => 'Mach Hotel bed'],
-    ['src' => asset('gallery/4.WebP'), 'alt' => 'Mach Hotel details'],
-    ['src' => asset('gallery/5.WebP'), 'alt' => 'Mach Hotel exterior'],
-    ['src' => asset('gallery/6.WebP'), 'alt' => 'Mach Hotel cafeteria'],
+    ['src' => asset('gallery/1.webp'), 'alt' => 'Mach Hotel front view'],
+    ['src' => asset('gallery/2.webp'), 'alt' => 'Mach Hotel suites'],
+    ['src' => asset('gallery/3.webp'), 'alt' => 'Mach Hotel bed'],
+    ['src' => asset('gallery/4.webp'), 'alt' => 'Mach Hotel details'],
+    ['src' => asset('gallery/5.webp'), 'alt' => 'Mach Hotel exterior'],
+    ['src' => asset('gallery/6.webp'), 'alt' => 'Mach Hotel cafeteria'],
   ];
 @endphp
 
@@ -227,10 +227,10 @@
 
         // ✅ Local room images (put these files in public/images/rooms/)
         $img = str_contains($slug, 'ddr')
-          ? asset('images/rooms/ddr.webp')
+          ? asset('images/rooms/rooms.webp')
           : (str_contains($slug, 'dsr')
-              ? asset('images/rooms/dsr.webp')
-              : asset('images/rooms/room-placeholder.webp'));
+              ? asset('images/rooms/rooms.webp')
+              : asset('images/rooms/rooms.webp'));
       @endphp
 
       <div class="col-md-6">
