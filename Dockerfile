@@ -1,6 +1,6 @@
 FROM php:8.3-fpm
 
-# System deps
+# System deps + PHP extensions
 RUN apt-get update && apt-get install -y \
     nginx supervisor git unzip zip libzip-dev \
     libsqlite3-dev libicu-dev \
@@ -27,11 +27,12 @@ RUN composer install --no-dev --optimize-autoloader
 # Install JS deps & build assets
 RUN npm install && npm run build
 
-# Permissions (fixes 500 + asset access)
+# Permissions (prevents common 500s)
 RUN chown -R www-data:www-data /var/www/html \
- && chmod -R 775 storage bootstrap/cache
+ && chmod -R 775 storage bootstrap/cache \
+ && chmod -R 775 storage/logs
 
-# Nginx + supervisor
+# Nginx config + supervisor + start script
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/start.sh /start.sh
