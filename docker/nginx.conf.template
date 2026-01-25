@@ -2,6 +2,11 @@ server {
     listen __PORT__;
     server_name _;
 
+    # If Render hits us via http internally, force browser to https
+    if ($http_x_forwarded_proto = "http") {
+        return 301 https://$host$request_uri;
+    }
+
     root /var/www/html/public;
     index index.php;
 
@@ -33,6 +38,7 @@ server {
         fastcgi_pass 127.0.0.1:9000;
     }
 
+    # Security: deny hidden files
     location ~ /\. {
         deny all;
     }
