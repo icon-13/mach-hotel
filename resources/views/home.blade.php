@@ -64,7 +64,7 @@
                 type="date"
                 name="check_out"
                 class="form-control"
-                min="{{ now()->toDateString() }}"
+                min="{{ now()->addDay()->toDateString() }}"
                 value="{{ request('check_out') }}"
                 required
               >
