@@ -7,24 +7,24 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
-class StaffAdminSeeder extends Seeder
+class ReceptionistSeeder extends Seeder
 {
     public function run(): void
     {
-        $email = env('ADMIN_EMAIL', 'admin@machhotel.com');
-        $name  = env('ADMIN_NAME', 'Admin');
-        $pass  = env('ADMIN_PASSWORD', '12345678');
+        $email = env('RECEPTION_EMAIL', 'reception@machhotel.com');
+        $name  = env('RECEPTION_NAME', 'Reception Desk');
+        $pass  = env('RECEPTION_PASSWORD', 'Reception@12345');
 
-        $admin = User::where('email', $email)->first();
+        $user = User::where('email', $email)->first();
 
-        if ($admin) {
-            $admin->role = 'admin';
+        if ($user) {
+            $user->role = 'receptionist';
 
             if (Schema::hasColumn('users', 'is_active')) {
-                $admin->is_active = true;
+                $user->is_active = true;
             }
 
-            $admin->save();
+            $user->save();
             return;
         }
 
@@ -32,7 +32,7 @@ class StaffAdminSeeder extends Seeder
             'name'     => $name,
             'email'    => $email,
             'password' => Hash::make($pass),
-            'role'     => 'admin',
+            'role'     => 'reception',
         ];
 
         if (Schema::hasColumn('users', 'is_active')) {
