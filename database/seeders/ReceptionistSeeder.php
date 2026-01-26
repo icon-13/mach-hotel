@@ -11,9 +11,9 @@ class ReceptionistSeeder extends Seeder
 {
     public function run(): void
     {
-        $email = env('RECEPTION_EMAIL', 'reception@machhotel.com');
-        $name  = env('RECEPTION_NAME', 'Reception Desk');
-        $pass  = env('RECEPTION_PASSWORD', 'Reception@12345');
+        $email = env('RECEPTION_EMAIL', 'info@machhotel.com');
+        $name  = env('RECEPTION_NAME', 'Reception');
+        $pass  = env('RECEPTION_PASSWORD', '12345678');
 
         $user = User::where('email', $email)->first();
 
