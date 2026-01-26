@@ -125,8 +125,37 @@ class DashboardController extends Controller
             ->count();
 
         $bookingsQuery = Booking::query()
-            ->with(['roomType', 'guest', 'physicalRoom'])
-            ->orderByRaw("FIELD(status,'CHECKED_IN','checked_in','CONFIRMED','confirmed','CHECKED_OUT','checked_out','CANCELLED','cancelled')")
+            ->with(['roomType', 'guest', 'physicalRoom']);
+
+        /**
+         * ✅ FIX: SQLite doesn't support MySQL FIELD()
+         * - MySQL/MariaDB => FIELD()
+         * - SQLite/others => CASE ordering
+         */
+        $driver = DB::getDriverName();
+
+        if ($driver === 'mysql') {
+            $bookingsQuery->orderByRaw("
+                FIELD(status,
+                    'CHECKED_IN','checked_in',
+                    'CONFIRMED','confirmed',
+                    'CHECKED_OUT','checked_out',
+                    'CANCELLED','cancelled'
+                )
+            ");
+        } else {
+            $bookingsQuery->orderByRaw("
+                CASE
+                    WHEN LOWER(status) = 'checked_in'  THEN 1
+                    WHEN LOWER(status) = 'confirmed'   THEN 2
+                    WHEN LOWER(status) = 'checked_out' THEN 3
+                    WHEN LOWER(status) = 'cancelled'   THEN 4
+                    ELSE 99
+                END
+            ");
+        }
+
+        $bookingsQuery
             ->orderBy('check_in')
             ->orderByDesc('id');
 
