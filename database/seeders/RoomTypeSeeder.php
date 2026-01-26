@@ -38,7 +38,7 @@ class RoomTypeSeeder extends Seeder
         if ($hasUsd)   $ddr['price_usd'] = 25.00;
         if ($hasQuota) $ddr['online_quota'] = 4;
 
-        RoomType::updateOrCreate(['slug' => 'ddr'], $ddr);
+        RoomType::firstOrCreate(['slug' => 'ddr'], $ddr);
 
         // DSR
         $dsr = [
@@ -55,6 +55,6 @@ class RoomTypeSeeder extends Seeder
         if ($hasUsd)   $dsr['price_usd'] = 20.00;
         if ($hasQuota) $dsr['online_quota'] = 8;
 
-        RoomType::updateOrCreate(['slug' => 'dsr'], $dsr);
+        RoomType::firstOrCreate(['slug' => 'dsr'], $dsr);
     }
 }
