@@ -13,6 +13,8 @@ use App\Http\Controllers\Reception\ReceptionAuthController;
 use App\Http\Controllers\Reception\Admin\RoomAdminController;
 use App\Http\Controllers\Reception\Admin\StaffAdminController;
 
+use App\Http\Controllers\Reception\AccountController;
+
 /*
 |--------------------------------------------------------------------------
 | Public Website Routes
@@ -21,10 +23,6 @@ use App\Http\Controllers\Reception\Admin\StaffAdminController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-/**
- * ✅ Breeze / Auth packages often redirect to route('dashboard').
- * We don't use a public dashboard, so redirect it to home.
- */
 Route::get('/dashboard', function () {
     return redirect()->route('home');
 })->name('dashboard');
@@ -42,7 +40,6 @@ Route::post('/book/{roomType}', [BookingController::class, 'store'])->name('book
 Route::get('/booking/{code}', [BookingController::class, 'confirmed'])->name('booking.confirmed');
 Route::get('/booking/{code}/pdf', [BookingController::class, 'pdf'])->name('booking.pdf');
 
-
 /*
 |--------------------------------------------------------------------------
 | Reception / Admin (Staff Auth)
@@ -51,42 +48,25 @@ Route::get('/booking/{code}/pdf', [BookingController::class, 'pdf'])->name('book
 
 Route::prefix('reception')->name('reception.')->group(function () {
 
-    /*
-    |----------------------------------------------------------------------
-    | Staff Login (NO guest middleware)
-    |----------------------------------------------------------------------
-    | Reason: guest:reception was redirecting you to /dashboard.
-    | Your controller showLogin() already redirects if staff is logged in.
-    */
+    // Login
     Route::get('/login',  [ReceptionAuthController::class, 'showLogin'])->name('login');
-
     Route::post('/login', [ReceptionAuthController::class, 'login'])
         ->middleware('throttle:10,1')
         ->name('login.submit');
 
-    /*
-    |----------------------------------------------------------------------
-    | Logout (GET + POST)
-    |----------------------------------------------------------------------
-    | GET avoids 419 after inactivity.
-    | POST is normal secure logout.
-    */
+    // Logout
     Route::get('/logout', [ReceptionAuthController::class, 'logoutGet'])->name('logout.get');
-
     Route::post('/logout', [ReceptionAuthController::class, 'logout'])->name('logout');
 
-
     /*
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
     | Reception Area (Admin + Reception)
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
     */
     Route::middleware(['auth:reception', 'reception.role:admin,reception'])->group(function () {
 
-        // Landing
+        // Landing + bookings
         Route::get('/', [DashboardController::class, 'index'])->name('bookings.index');
-
-        // Bookings
         Route::get('/bookings', [DashboardController::class, 'index'])->name('bookings.index');
 
         Route::get('/bookings/create', [DashboardController::class, 'create'])->name('bookings.create');
@@ -97,28 +77,29 @@ Route::prefix('reception')->name('reception.')->group(function () {
         Route::post('/bookings/{booking}/check-in', [DashboardController::class, 'checkIn'])->name('bookings.checkin');
         Route::post('/bookings/{booking}/check-out', [DashboardController::class, 'checkOut'])->name('bookings.checkout');
         Route::post('/bookings/{booking}/cancel', [DashboardController::class, 'cancel'])->name('bookings.cancel');
-
         Route::post('/bookings/{booking}/override-room', [DashboardController::class, 'overrideRoom'])->name('bookings.overrideRoom');
 
-        // Rooms Board (Reception view)
+        // Rooms Board
         Route::get('/rooms', [DashboardController::class, 'rooms'])->name('rooms.index');
 
-        // API for check-in modal + walk-in check-in now
+        // API
         Route::get('/api/available-rooms', [DashboardController::class, 'availableRoomsApi'])->name('api.availableRooms');
+
+        // ✅ Account (password)
+        Route::get('/account/password', [AccountController::class, 'editPassword'])->name('account.password');
+        Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
     });
 
-
     /*
-    |----------------------------------------------------------------------
-    | Admin Only (Staff + Rooms Management)
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
+    | Admin Only
+    |--------------------------------------------------------------------------
     */
     Route::middleware(['auth:reception', 'reception.role:admin'])
         ->prefix('admin')
         ->name('admin.')
         ->group(function () {
 
-            // Admin landing
             Route::get('/', function () {
                 return redirect()->route('reception.admin.rooms.index');
             })->name('index');
@@ -136,14 +117,11 @@ Route::prefix('reception')->name('reception.')->group(function () {
 
             // Rooms Management
             Route::get('/rooms', [RoomAdminController::class, 'index'])->name('rooms.index');
-
             Route::get('/rooms/{physicalRoom}/edit', [RoomAdminController::class, 'edit'])->name('rooms.edit');
             Route::put('/rooms/{physicalRoom}', [RoomAdminController::class, 'update'])->name('rooms.update');
-
             Route::post('/rooms/bulk-assign', [RoomAdminController::class, 'bulkAssign'])->name('rooms.bulkAssign');
         });
 });
-
 
 /*
 |--------------------------------------------------------------------------

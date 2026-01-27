@@ -11,12 +11,14 @@ class RoomAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $typeId = $request->query('room_type_id');
+        $typeId  = $request->query('room_type_id'); // numeric id OR 'tbd'
+        $status  = $request->query('status');       // Available/Booked/Occupied/OutOfService
 
         $roomsQuery = PhysicalRoom::query()
             ->with('roomType')
             ->orderBy('room_number');
 
+        // Filter by type
         if ($typeId !== null && $typeId !== '') {
             if ($typeId === 'tbd') {
                 $roomsQuery->whereNull('room_type_id');
@@ -25,10 +27,16 @@ class RoomAdminController extends Controller
             }
         }
 
+        // Filter by status
+        if ($status !== null && $status !== '') {
+            $roomsQuery->where('status', $status);
+        }
+
         return view('reception.admin.rooms.index', [
             'rooms'        => $roomsQuery->get(),
             'roomTypes'    => RoomType::orderBy('name')->get(),
             'selectedType' => $typeId,
+            'selectedStatus' => $status,
         ]);
     }
 
@@ -50,25 +58,26 @@ class RoomAdminController extends Controller
         ]);
 
         /**
-         * ✅ IMPORTANT BUSINESS RULE:
-         * Online bookability is controlled by RoomType (is_bookable + quotas),
-         * NOT by physical rooms. So we don't store "is_bookable_online" here.
+         * ✅ BUSINESS RULE (locked):
+         * Online booking is controlled by RoomType (online_quota + is_active),
+         * NOT by physical rooms.
          *
-         * TBD rooms = room_type_id NULL. They stay hidden online automatically.
+         * TBD rooms = room_type_id NULL → hidden online automatically.
          */
 
         $physicalRoom->update($data);
 
         return redirect()
-            ->route('reception.admin.rooms.index')
+            ->route('reception.admin.rooms.index', request()->only(['room_type_id','status']))
             ->with('success', 'Room updated successfully.');
     }
 
     public function bulkAssign(Request $request)
     {
         $data = $request->validate([
-            'room_type_id'  => ['nullable', 'exists:room_types,id'],
-            'room_numbers'  => ['required', 'string'], // comma-separated like "101,102,103" OR "A1,A2,B1"
+            'room_type_id' => ['nullable', 'exists:room_types,id'], // null = TBD
+            'room_numbers' => ['required', 'string'],              // "101,102,A1,B2"
+            'status'       => ['nullable', 'in:Available,Booked,Occupied,OutOfService'], // optional bulk status
         ]);
 
         $numbers = collect(explode(',', $data['room_numbers']))
@@ -76,10 +85,17 @@ class RoomAdminController extends Controller
             ->filter()
             ->values();
 
-        PhysicalRoom::whereIn('room_number', $numbers)->update([
-            'room_type_id' => $data['room_type_id'] ?? null, // null = TBD
-        ]);
+        $payload = [
+            'room_type_id' => $data['room_type_id'] ?? null,
+        ];
 
-        return back()->with('success', 'Bulk assignment saved.');
+        // Optional: bulk status change (useful for the “9 rooms maintenance” setup)
+        if (!empty($data['status'])) {
+            $payload['status'] = $data['status'];
+        }
+
+        PhysicalRoom::whereIn('room_number', $numbers)->update($payload);
+
+        return back()->with('success', 'Bulk update saved.');
     }
 }

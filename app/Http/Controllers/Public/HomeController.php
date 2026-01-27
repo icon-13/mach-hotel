@@ -7,14 +7,16 @@ use App\Models\RoomType;
 
 class HomeController extends Controller
 {
-    public function index()
-    {
-        $roomTypes = RoomType::query()
-            ->where('is_active', true)
-            ->where('is_bookable', true)
-            ->orderBy('price_tzs')
-            ->get();
+   public function index()
+{
+    $roomTypes = RoomType::query()
+        ->where('is_active', true)
+        ->where('is_bookable', true)
+        ->where('online_quota', '>', 0)
+        ->orderBy('price_tzs')
+        ->get();
 
-        return view('home', compact('roomTypes'));
-    }
+    return view('home', compact('roomTypes'));
+}
+
 }

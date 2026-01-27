@@ -37,7 +37,10 @@
   {{-- ✅ Tiny critical safety net (prevents ghost scroll on mobile) --}}
   <style>
     html, body { max-width: 100%; overflow-x: hidden; }
+    
   </style>
+  <link rel="icon" href="/favicon.ico">
+
 </head>
 
 <body class="d-flex flex-column min-vh-100">

@@ -99,7 +99,9 @@ img, iframe{ max-width: 100%; }
    ========================= */
 .nav-glass{
   background: rgba(10,14,20,.55);
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(14px);
+   backdrop-filter: blur(14px);
+
   border-bottom: 1px solid var(--border);
 }
 html[data-theme="light"] .nav-glass{
@@ -218,7 +220,9 @@ html[data-theme="light"] .hero-lux{
 
 .glass-card{
   background: rgba(16,24,38,.55);
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(14px);
+   backdrop-filter: blur(14px);
+
 }
 
 .room-card{
@@ -251,7 +255,9 @@ html[data-theme="light"] .hero-lux{
   position:absolute;
   top:12px;left:12px;
   background: rgba(10,14,20,.55);
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+
   border:1px solid rgba(255,255,255,.14);
   padding:.35rem .6rem;
   border-radius:999px;
@@ -562,7 +568,10 @@ html[data-theme="dark"] .dropdown-item:disabled{
   color: var(--text2) !important;
 
   background: rgba(16,24,38,.82) !important;
-  backdrop-filter: blur(10px);
+  background: rgba(15, 22, 32, 0.85); /* fallback */
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+
   border-bottom: 1px solid var(--border) !important;
 }
 html[data-theme="light"] .table thead th{
@@ -615,7 +624,9 @@ html[data-theme="light"] .table-hover > tbody > tr:hover{
   top: 0;
   z-index: 2;
   background: rgba(16,24,38,.88) !important;
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(14px);
+   backdrop-filter: blur(14px);
+
   color: rgba(255,255,255,.88) !important;
   border-bottom: 1px solid var(--border) !important;
 }
@@ -648,6 +659,24 @@ html[data-theme="light"] .rx-table-card{
   background: #fff;
 }
 
+html[data-theme="dark"] .fw-semibold{
+ color:#fff
+}
+
+html[data-theme="dark"] .rx-col-room{
+ color:#fff
+}
+
+html[data-theme="dark"] .rx-col-status{
+ color:#fff
+}
+
+
+html[data-theme="dark"] .btn-outline-dark{
+ color:#fff
+}
+
+
 /* =========================================================
    GLOBAL TABLE SCROLL — MOBILE & DESKTOP (PREMIUM)
    ========================================================= */
@@ -657,7 +686,13 @@ html[data-theme="light"] .rx-table-card{
   position: relative;
   overflow-x: auto;
   overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+/* Smooth scrolling for iOS (safe fallback elsewhere) */
+@supports (-webkit-overflow-scrolling: touch) {
+  .your-scroll-container {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
   max-width: 100%;
 }
 
@@ -684,6 +719,27 @@ html[data-theme="light"] .table-responsive::-webkit-scrollbar-thumb,
 html[data-theme="light"] .rx-table-responsive::-webkit-scrollbar-thumb{
   background: rgba(13,18,26,.20);
 }
+
+/* Reception Navbar polish */
+.rx-nav .navbar-toggler {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.rx-nav .navbar-toggler:focus { box-shadow: none; }
+
+.rx-nav .nav-link {
+  border-radius: 14px;
+  padding: .55rem .75rem;
+}
+.rx-nav .nav-link.active {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+}
+.rx-nav .dropdown-menu.rx-dd {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
 
 /* =========================================================
    FLASH MESSAGES / ALERTS — HIGH CONTRAST (LIGHT/DARK)
@@ -790,7 +846,9 @@ html[data-theme="light"] .alert-info{
   background: rgba(10,14,20,.55);
   border: 1px solid rgba(255,255,255,.14);
   color: rgba(255,255,255,.92);
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+
 }
 html[data-theme="light"] .map-chip{
   background: rgba(255,255,255,.78);

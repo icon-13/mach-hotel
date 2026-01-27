@@ -18,7 +18,8 @@
   <link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}?v={{ filemtime(public_path('assets/css/theme.css')) }}">
 
   
-  @stack('styles')
+  <link rel="icon" href="/favicon.ico">
+
 </head>
 
 <body class="bg-soft">

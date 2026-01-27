@@ -14,6 +14,7 @@ class ReceptionAuthController extends Controller
      */
     public function showLogin(Request $request)
     {
+        // If already logged in, go to correct landing
         if (Auth::guard('reception')->check()) {
             $u = Auth::guard('reception')->user();
 
@@ -22,8 +23,12 @@ class ReceptionAuthController extends Controller
                 : redirect()->route('reception.bookings.index');
         }
 
-        // ✅ Prevent old intended redirects (like /dashboard) from hijacking staff login
+        // ✅ Prevent old intended redirects (like /dashboard) hijacking staff login
         $request->session()->forget('url.intended');
+
+        // ✅ IMPORTANT: Refresh CSRF token so login form always has a valid token
+        // This kills “419 after inactivity / old tab” issues.
+        $request->session()->regenerateToken();
 
         return view('reception.auth.login');
     }
@@ -49,7 +54,7 @@ class ReceptionAuthController extends Controller
         $user = Auth::guard('reception')->user();
 
         // Allow only staff roles into reception
-        if (!in_array($user->role, ['admin', 'reception'], true)) {
+        if (!$user || !in_array($user->role, ['admin', 'reception'], true)) {
             Auth::guard('reception')->logout();
 
             throw ValidationException::withMessages([
@@ -66,8 +71,12 @@ class ReceptionAuthController extends Controller
             ]);
         }
 
-        // Security best practice
+        // ✅ SECURITY: new session id after login
         $request->session()->regenerate();
+
+        // ✅ CRITICAL: regenerate CSRF token after session regenerate
+        // Prevents the “logged in but 419 appears” from stale token / double submit.
+        $request->session()->regenerateToken();
 
         // ✅ Role landing
         $target = ($user->role === 'admin')
@@ -75,9 +84,7 @@ class ReceptionAuthController extends Controller
             : route('reception.bookings.index');
 
         /**
-         * ✅ IMPORTANT FIX:
-         * Only respect "intended" if it points INSIDE /reception
-         * (prevents /dashboard -> / redirects)
+         * ✅ Only respect "intended" if it points INSIDE /reception
          */
         $intended = session()->pull('url.intended');
         if ($intended && str_starts_with($intended, url('/reception'))) {
@@ -101,16 +108,13 @@ class ReceptionAuthController extends Controller
     }
 
     /**
-     * Logout via GET (never 419 after inactivity) — safe even if already logged out
+     * Logout via GET (fallback only; don't link it in UI)
      */
     public function logoutGet(Request $request)
     {
-        // If session already expired / not logged in, just go to reception login
-        if (!Auth::guard('reception')->check()) {
-            return redirect()->route('reception.login');
+        if (Auth::guard('reception')->check()) {
+            Auth::guard('reception')->logout();
         }
-
-        Auth::guard('reception')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -7,30 +7,42 @@ use Illuminate\Support\Collection;
 
 class AvailabilityService
 {
+    private function activeOverlapStatuses(): array
+    {
+        // support both canonical + legacy
+        return ['CONFIRMED','CHECKED_IN','confirmed','checked_in'];
+    }
+
     public function availableRoomTypes(string $checkIn, string $checkOut, int $guests = 1): Collection
     {
         return RoomType::query()
             ->where('is_active', true)
+            ->where('is_bookable', true)        // ✅ only types allowed online
             ->where('capacity', '>=', $guests)
             ->where('online_quota', '>', 0)
             ->withCount(['bookings as overlapping_bookings_count' => function ($q) use ($checkIn, $checkOut) {
-                $q->whereIn('status', ['Confirmed', 'CheckedIn'])
+                $q->whereIn('status', $this->activeOverlapStatuses())
                   ->where('check_in', '<', $checkOut)
                   ->where('check_out', '>', $checkIn);
             }])
             ->get()
-            ->filter(fn($type) => (int)$type->overlapping_bookings_count < (int)$type->online_quota)
+            ->filter(fn ($type) => (int)$type->overlapping_bookings_count < (int)$type->online_quota)
             ->sortBy('price_tzs')
             ->values();
     }
 
     public function hasAvailability(int $roomTypeId, string $checkIn, string $checkOut): bool
     {
-        $type = RoomType::whereKey($roomTypeId)->where('is_active', true)->first();
+        $type = RoomType::query()
+            ->whereKey($roomTypeId)
+            ->where('is_active', true)
+            ->where('is_bookable', true)
+            ->first();
+
         if (!$type || (int)$type->online_quota <= 0) return false;
 
         $overlaps = $type->bookings()
-            ->whereIn('status', ['Confirmed','CheckedIn'])
+            ->whereIn('status', $this->activeOverlapStatuses())
             ->where('check_in', '<', $checkOut)
             ->where('check_out', '>', $checkIn)
             ->count();

@@ -112,7 +112,7 @@
           </a>
         </li>
 
-        {{-- ✅ Mobile (expanded) quick actions: DO NOT HIDE anything, just add more --}}
+        {{-- ✅ Mobile (expanded) quick actions: NO GET logout --}}
         <li class="nav-item d-lg-none mt-2">
           <div class="card border-0" style="background: rgba(255,255,255,.06);">
             <div class="card-body p-2">
@@ -124,10 +124,14 @@
                   <i class="bi bi-shield-lock me-1"></i> Change Password
                 </a>
 
-                <a class="btn btn-outline-danger"
-                   href="{{ route('reception.logout.get') }}">
-                  <i class="bi bi-box-arrow-right me-1"></i> Logout
-                </a>
+                {{-- ✅ POST logout (fixes 419) --}}
+                <form method="POST" action="{{ route('reception.logout') }}">
+                  @csrf
+                  <button type="submit" class="btn btn-outline-danger w-100">
+                    <i class="bi bi-box-arrow-right me-1"></i> Logout
+                  </button>
+                </form>
+
               </div>
             </div>
           </div>
@@ -135,7 +139,7 @@
 
       </ul>
 
-      {{-- Right: Actions --}}
+      {{-- Right: Actions (ALWAYS visible on desktop, still works on mobile too) --}}
       <div class="d-flex align-items-center gap-2 rx-actions">
 
         {{-- Theme toggle --}}
@@ -163,7 +167,6 @@
 
             <li><hr class="dropdown-divider"></li>
 
-            {{-- ✅ New: staff self-service --}}
             <li>
               <a class="dropdown-item" href="{{ route('reception.account.password') }}">
                 <i class="bi bi-shield-lock me-2"></i> Change Password
@@ -204,27 +207,29 @@
 
             <li><hr class="dropdown-divider"></li>
 
-            <li>
-              <form method="POST" action="{{ route('reception.logout') }}" class="d-inline">
-  @csrf
-  <button type="submit" class="btn btn-outline-danger">
-    <i class="bi bi-box-arrow-right me-1"></i> Logout
-  </button>
-</form>
-
+            {{-- ✅ POST logout inside dropdown --}}
+            <li class="px-2 pb-2">
+              <form method="POST" action="{{ route('reception.logout') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger w-100">
+                  <i class="bi bi-box-arrow-right me-1"></i> Logout
+                </button>
+              </form>
             </li>
+
           </ul>
         </div>
 
-        {{-- Desktop always-visible logout --}}
-
-        
-        <a href="{{ route('reception.logout.get') }}"
-           class="btn btn-sm btn-outline-danger px-3 d-none d-lg-inline">
-          <i class="bi bi-box-arrow-right me-1"></i> Logout
-        </a>
+        {{-- ✅ Desktop visible logout (POST, not GET) --}}
+        <form method="POST" action="{{ route('reception.logout') }}" class="d-none d-lg-inline">
+          @csrf
+          <button type="submit" class="btn btn-sm btn-outline-danger px-3">
+            <i class="bi bi-box-arrow-right me-1"></i> Logout
+          </button>
+        </form>
 
       </div>
     </div>
+
   </div>
 </nav>
