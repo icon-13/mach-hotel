@@ -1,258 +1,161 @@
 @extends('layouts.reception')
-@section('title','Reception — Rooms Board')
+
+@section('title','Rooms Board')
 
 @section('content')
-<section class="container rx-container py-4 py-lg-5">
+@php
+  // Premium chip helper
+  $chip = function(string $kind){
+    return match($kind){
+      'available' => 'badge text-bg-success',
+      'booked'    => 'badge text-bg-primary',
+      'occupied'  => 'badge text-bg-danger',
+      'oos'       => 'badge text-bg-warning',
+      'total'     => 'badge text-bg-secondary',
+      default     => 'badge text-bg-secondary',
+    };
+  };
+
+  $visualBookedRoomIdsByType = $visualBookedRoomIdsByType ?? [];
+  $countsByType = $countsByType ?? [];
+@endphp
+
+<div class="container rx-container py-4">
 
   <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-3">
     <div>
       <div class="text-muted small">Reception</div>
       <h2 class="mb-1">Rooms Board</h2>
-      <div class="text-muted">Filter by status • Quick scan by room number</div>
+      <div class="text-muted">Live view by date • booked holds reflect confirmed reservations</div>
     </div>
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-dark" href="{{ route('reception.bookings.index') }}">
-        <i class="bi bi-journal-text me-1"></i> Bookings
-      </a>
-    </div>
+
+    <form class="d-flex gap-2 flex-wrap" method="GET">
+      <input type="date" name="date" class="form-control" value="{{ $date ?? now()->toDateString() }}">
+      <select name="status" class="form-select">
+        <option value="">All</option>
+        <option value="available" @selected(($status ?? '')==='available')>Available</option>
+        <option value="booked" @selected(($status ?? '')==='booked')>Booked</option>
+        <option value="occupied" @selected(($status ?? '')==='occupied')>Occupied</option>
+        <option value="outofservice" @selected(($status ?? '')==='outofservice')>Maintenance</option>
+      </select>
+      <button class="btn btn-dark"><i class="bi bi-funnel me-1"></i>Apply</button>
+    </form>
   </div>
 
-  {{-- Filters + Search --}}
-  @php
-    // ✅ UI uses lowercase keys: all|available|occupied|booked|maintenance
-    $active = strtolower((string)($status ?: 'all'));
-  @endphp
-
-  <div class="card shadow-sm mb-3">
-    <div class="card-body">
-      <div class="row g-2 align-items-center">
-        <div class="col-12 col-lg-7">
-          <ul class="nav nav-pills flex-wrap gap-2 mb-0">
-
-            <li class="nav-item">
-              <a class="nav-link @if($active==='all') active @endif"
-                 href="{{ route('reception.rooms.index') }}">
-                All
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link @if($active==='available') active @endif"
-                 href="{{ route('reception.rooms.index', ['status' => 'available']) }}">
-                <i class="bi bi-check2-circle me-1"></i> Available
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link @if($active==='occupied') active @endif"
-                 href="{{ route('reception.rooms.index', ['status' => 'occupied']) }}">
-                <i class="bi bi-person-fill me-1"></i> Occupied
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link @if($active==='booked') active @endif"
-                 href="{{ route('reception.rooms.index', ['status' => 'booked']) }}">
-                <i class="bi bi-bookmark-check me-1"></i> Booked
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link @if($active==='maintenance') active @endif"
-                 href="{{ route('reception.rooms.index', ['status' => 'maintenance']) }}">
-                <i class="bi bi-tools me-1"></i> Maintenance
-              </a>
-            </li>
-
-          </ul>
-        </div>
-
-        <div class="col-12 col-lg-5">
-          <label class="form-label mb-1">Quick find room</label>
-          <div class="input-group">
-            <span class="input-group-text rx-input-addon">
-              <i class="bi bi-search"></i>
-            </span>
-            <input id="roomSearch" class="form-control" placeholder="Type room number e.g. 101, 12, A3…">
-            <button class="btn btn-outline-secondary" type="button" id="clearSearch">Clear</button>
-          </div>
-          <div class="text-muted small mt-1">Tip: type any digits/letters — matching tiles will glow.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {{-- Board --}}
+  {{-- Room Types --}}
   <div class="row g-3">
-
-    @php
-      /**
-       * ✅ Normalize DB room status -> UI key
-       * DB: Available / Booked / Occupied / OutOfService
-       * UI: available / booked / occupied / maintenance
-       */
-      $normStatus = function($dbStatus) {
-        $s = strtolower(trim((string)$dbStatus));
-        return match ($s) {
-          'available'     => 'available',
-          'occupied'      => 'occupied',
-          'booked'        => 'booked',
-          'outofservice',
-          'out_of_service',
-          'oos',
-          'maintenance'   => 'maintenance',
-          default         => 'available',
-        };
-      };
-    @endphp
-
-    {{-- ✅ TBD Rooms (room_type_id = null) --}}
-    @if(isset($tbdRooms) && $tbdRooms->count())
+    @foreach($roomTypes as $rt)
       @php
-        $available = $tbdRooms->filter(fn($r) => $normStatus($r->status) === 'available')->count();
-        $occupied  = $tbdRooms->filter(fn($r) => $normStatus($r->status) === 'occupied')->count();
-        $booked    = $tbdRooms->filter(fn($r) => $normStatus($r->status) === 'booked')->count();
-        $maint     = $tbdRooms->filter(fn($r) => $normStatus($r->status) === 'maintenance')->count();
-        $total     = $tbdRooms->count();
+        $c = $countsByType[$rt->id] ?? ['available'=>0,'booked'=>0,'occupied'=>0,'oos'=>0,'total'=>0];
+        $visualBookedIds = collect($visualBookedRoomIdsByType[$rt->id] ?? [])->map(fn($x)=>(int)$x);
       @endphp
 
-      <div class="col-lg-6">
-        <div class="card shadow-sm h-100 border border-warning">
+      <div class="col-12">
+        <div class="card shadow-sm" style="border:1px solid var(--border); background: var(--card);">
           <div class="card-body">
 
-            <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
               <div>
-                <h5 class="mb-1">
-                  <i class="bi bi-question-circle me-1 text-warning"></i> TBD Rooms
-                </h5>
-                <div class="text-muted small">
-                  Not assigned to a room type yet • Admin must classify these rooms.
+                <div class="d-flex align-items-center gap-2">
+                  <h4 class="mb-0">{{ $rt->name }}</h4>
+                  <span class="badge rounded-pill" style="background: rgba(255,215,128,.18); border:1px solid rgba(255,215,128,.25); color: var(--gold);">
+                    Online quota: {{ $rt->online_quota }}
+                  </span>
                 </div>
                 <div class="text-muted small mt-1">
-                  Total: {{ $total }} •
-                  <span class="text-success">Avail: {{ $available }}</span> •
-                  <span class="text-danger">Occ: {{ $occupied }}</span> •
-                  <span class="text-primary">Booked: {{ $booked }}</span> •
-                  <span class="text-warning">Maint: {{ $maint }}</span>
+                  Total: <b>{{ $c['total'] }}</b>
+                  <span class="mx-1">•</span>
+                  Avail: <b class="text-success">{{ $c['available'] }}</b>
+                  <span class="mx-1">•</span>
+                  Occ: <b class="text-danger">{{ $c['occupied'] }}</b>
+                  <span class="mx-1">•</span>
+                  Booked: <b class="text-primary">{{ $c['booked'] }}</b>
+                  <span class="mx-1">•</span>
+                  Maint: <b class="text-warning">{{ $c['oos'] }}</b>
                 </div>
               </div>
 
-              <div class="text-muted small">
-                Online quota: <span class="fw-semibold">N/A</span>
+              <div class="d-flex gap-2 flex-wrap">
+                <span class="{{ $chip('available') }} rounded-pill px-3 py-2">
+                  <i class="bi bi-check-circle me-1"></i> Avail {{ $c['available'] }}
+                </span>
+                <span class="{{ $chip('booked') }} rounded-pill px-3 py-2">
+                  <i class="bi bi-bookmark-check me-1"></i> Booked {{ $c['booked'] }}
+                </span>
+                <span class="{{ $chip('occupied') }} rounded-pill px-3 py-2">
+                  <i class="bi bi-person-fill-check me-1"></i> Occupied {{ $c['occupied'] }}
+                </span>
+                <span class="{{ $chip('oos') }} rounded-pill px-3 py-2">
+                  <i class="bi bi-tools me-1"></i> Maint {{ $c['oos'] }}
+                </span>
               </div>
             </div>
 
-            <hr>
+            <hr style="border-color: var(--border);">
 
-            <div class="room-grid">
-              @foreach($tbdRooms as $room)
+            {{-- Room tiles --}}
+            <div class="row g-2">
+              @forelse($rt->physicalRooms as $room)
                 @php
-                  $statusKey = $normStatus($room->status);
-                  $badgeText = strtoupper($statusKey);
+                  // Base DB status (after sync)
+                  $dbStatus = $room->status;
 
-                  $tileClass = match($statusKey) {
-                    'available'   => 'room-tile room-available',
-                    'occupied'    => 'room-tile room-occupied',
-                    'booked'      => 'room-tile room-booked',
-                    'maintenance' => 'room-tile room-maintenance',
-                    default       => 'room-tile room-default',
+                  // Overlay: if it's available but in visualBookedIds => show Booked
+                  $effective = $dbStatus;
+                  if ($dbStatus === 'Available' && $visualBookedIds->contains((int)$room->id)) {
+                    $effective = 'Booked';
+                  }
+
+                  $badgeClass = match($effective){
+                    'Available' => 'text-bg-success',
+                    'Booked' => 'text-bg-primary',
+                    'Occupied' => 'text-bg-danger',
+                    'OutOfService' => 'text-bg-warning',
+                    default => 'text-bg-secondary',
                   };
 
-                  $pillClass = match($statusKey) {
-                    'available'   => 'room-pill room-pill-available',
-                    'occupied'    => 'room-pill room-pill-occupied',
-                    'booked'      => 'room-pill room-pill-booked',
-                    'maintenance' => 'room-pill room-pill-maintenance',
-                    default       => 'room-pill room-pill-default',
+                  $pillIcon = match($effective){
+                    'Available' => 'bi-check-circle',
+                    'Booked' => 'bi-bookmark-check',
+                    'Occupied' => 'bi-person-fill-check',
+                    'OutOfService' => 'bi-tools',
+                    default => 'bi-dot',
                   };
                 @endphp
 
-                <div class="{{ $tileClass }}"
-                     data-room="{{ $room->room_number }}"
-                     data-status="{{ $statusKey }}">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold room-number">{{ $room->room_number }}</div>
-                    <span class="{{ $pillClass }}">{{ $badgeText }}</span>
-                  </div>
-                </div>
-              @endforeach
-            </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                  <div class="p-2 rounded-4 h-100"
+                       style="border:1px solid var(--border); background: rgba(0,0,0,.08);">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div class="fw-semibold">{{ $room->room_number }}</div>
+                      <span class="badge {{ $badgeClass }} rounded-pill">
+                        <i class="bi {{ $pillIcon }} me-1"></i>{{ strtoupper($effective) }}
+                      </span>
+                    </div>
 
-          </div>
-        </div>
-      </div>
-    @endif
-
-    {{-- Room types --}}
-    @foreach($roomTypes as $rt)
-
-      @php
-        // ✅ switched from rooms -> physicalRooms
-        $rooms = $rt->physicalRooms ?? collect();
-
-        $available = $rooms->filter(fn($r) => $normStatus($r->status) === 'available')->count();
-        $occupied  = $rooms->filter(fn($r) => $normStatus($r->status) === 'occupied')->count();
-        $booked    = $rooms->filter(fn($r) => $normStatus($r->status) === 'booked')->count();
-        $maint     = $rooms->filter(fn($r) => $normStatus($r->status) === 'maintenance')->count();
-        $total     = $rooms->count();
-      @endphp
-
-      <div class="col-lg-6">
-        <div class="card shadow-sm h-100">
-          <div class="card-body">
-
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <div>
-                <h5 class="mb-1">{{ $rt->name }}</h5>
-                <div class="text-muted small">
-                  Total: {{ $total }} •
-                  <span class="text-success">Avail: {{ $available }}</span> •
-                  <span class="text-danger">Occ: {{ $occupied }}</span> •
-                  <span class="text-primary">Booked: {{ $booked }}</span> •
-                  <span class="text-warning">Maint: {{ $maint }}</span>
-                </div>
-              </div>
-
-              <div class="text-muted small">
-                Online quota: <span class="fw-semibold">{{ $rt->online_quota ?? '-' }}</span>
-              </div>
-            </div>
-
-            <hr>
-
-            <div class="room-grid">
-              @forelse($rooms as $room)
-                @php
-                  $statusKey = $normStatus($room->status);
-                  $badgeText = strtoupper($statusKey);
-
-                  $tileClass = match($statusKey) {
-                    'available'   => 'room-tile room-available',
-                    'occupied'    => 'room-tile room-occupied',
-                    'booked'      => 'room-tile room-booked',
-                    'maintenance' => 'room-tile room-maintenance',
-                    default       => 'room-tile room-default',
-                  };
-
-                  $pillClass = match($statusKey) {
-                    'available'   => 'room-pill room-pill-available',
-                    'occupied'    => 'room-pill room-pill-occupied',
-                    'booked'      => 'room-pill room-pill-booked',
-                    'maintenance' => 'room-pill room-pill-maintenance',
-                    default       => 'room-pill room-pill-default',
-                  };
-                @endphp
-
-                <div class="{{ $tileClass }}"
-                     data-room="{{ $room->room_number }}"
-                     data-status="{{ $statusKey }}">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold room-number">{{ $room->room_number }}</div>
-                    <span class="{{ $pillClass }}">{{ $badgeText }}</span>
+                    @if($effective === 'Booked')
+                      <div class="text-muted small mt-1">
+                        Reserved (confirmed) • room not assigned yet
+                      </div>
+                    @elseif($effective === 'Occupied')
+                      <div class="text-muted small mt-1">
+                        Guest checked-in
+                      </div>
+                    @elseif($effective === 'OutOfService')
+                      <div class="text-muted small mt-1">
+                        Maintenance / blocked
+                      </div>
+                    @else
+                      <div class="text-muted small mt-1">
+                        Ready for assignment
+                      </div>
+                    @endif
                   </div>
                 </div>
               @empty
-                <div class="text-muted">No rooms created yet.</div>
+                <div class="col-12">
+                  <div class="text-muted">No rooms for this type.</div>
+                </div>
               @endforelse
             </div>
 
@@ -262,38 +165,67 @@
     @endforeach
   </div>
 
-</section>
+  {{-- TBD block --}}
+  <div class="mt-4">
+    @php $tc = $tbdCounts ?? ['available'=>0,'oos'=>0,'total'=>0]; @endphp
+    <div class="card shadow-sm" style="border:1px solid var(--border); background: var(--card);">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
+            <h4 class="mb-0">Unassigned (TBD)</h4>
+            <div class="text-muted small mt-1">
+              Total: <b>{{ $tc['total'] }}</b> • Avail: <b class="text-success">{{ $tc['available'] }}</b> • Maint: <b class="text-warning">{{ $tc['oos'] }}</b>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <span class="badge text-bg-secondary rounded-pill px-3 py-2">
+              <i class="bi bi-grid-3x3-gap me-1"></i> Total {{ $tc['total'] }}
+            </span>
+            <span class="badge text-bg-success rounded-pill px-3 py-2">
+              <i class="bi bi-check-circle me-1"></i> Avail {{ $tc['available'] }}
+            </span>
+            <span class="badge text-bg-warning rounded-pill px-3 py-2">
+              <i class="bi bi-tools me-1"></i> Maint {{ $tc['oos'] }}
+            </span>
+          </div>
+        </div>
+
+        <hr style="border-color: var(--border);">
+
+        <div class="row g-2">
+          @forelse($tbdRooms as $room)
+            @php
+              $effective = $room->status;
+              $badgeClass = match($effective){
+                'Available' => 'text-bg-success',
+                'Booked' => 'text-bg-primary',
+                'Occupied' => 'text-bg-danger',
+                'OutOfService' => 'text-bg-warning',
+                default => 'text-bg-secondary',
+              };
+            @endphp
+
+            <div class="col-6 col-md-3 col-lg-2">
+              <div class="p-2 rounded-4 h-100" style="border:1px solid var(--border); background: rgba(0,0,0,.08);">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="fw-semibold">{{ $room->room_number }}</div>
+                  <span class="badge {{ $badgeClass }} rounded-pill">
+                    {{ strtoupper($effective) }}
+                  </span>
+                </div>
+                <div class="text-muted small mt-1">Not assigned to any type</div>
+              </div>
+            </div>
+          @empty
+            <div class="col-12">
+              <div class="text-muted">No TBD rooms.</div>
+            </div>
+          @endforelse
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
 @endsection
-
-@push('scripts')
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const input = document.getElementById('roomSearch');
-    const clear = document.getElementById('clearSearch');
-    const tiles = Array.from(document.querySelectorAll('.room-tile[data-room]'));
-
-    function applyFilter(q){
-      q = (q || '').trim().toLowerCase();
-
-      tiles.forEach(t => {
-        t.classList.remove('is-match','is-dim');
-        if (!q) return;
-
-        const rn = (t.getAttribute('data-room') || '').toLowerCase();
-        const isMatch = rn.includes(q);
-
-        if (isMatch) t.classList.add('is-match');
-        else t.classList.add('is-dim');
-      });
-    }
-
-    input?.addEventListener('input', () => applyFilter(input.value));
-    clear?.addEventListener('click', () => {
-      if (!input) return;
-      input.value = '';
-      applyFilter('');
-      input.focus();
-    });
-  });
-</script>
-@endpush

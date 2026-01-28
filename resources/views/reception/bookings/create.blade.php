@@ -207,9 +207,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!checkOutInput.value || checkOutInput.value < minOut) checkOutInput.value = minOut;
   }
 
-  function toggleRoomPick() {
-    wrap.classList.toggle('d-none', !check.checked);
+    function toggleRoomPick() {
+    const on = check.checked;
+    wrap.classList.toggle('d-none', !on);
+    roomSelect.required = on; // ✅ makes browser enforce it too
   }
+
 
   function buildUrl() {
     const typeId = typeSelect.value;
@@ -277,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   toggleRoomPick();
   if (check.checked) loadRooms(); // handles old('check_in_now') after validation errors
+  
 });
 </script>
 
@@ -403,6 +407,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
   toggleRoomPick();
   if (check.checked) loadRooms();
+
+    // ✅ Prevent submit if check-in-now is ON but no room selected
+  const form = document.getElementById('walkinForm');
+  form?.addEventListener('submit', (e) => {
+    if (check.checked) {
+      const val = roomSelect.value;
+      if (!val) {
+        e.preventDefault();
+        roomSelect.focus();
+        alert('Please select a physical room for immediate check-in.');
+      }
+    }
+  });
+
 });
 </script>
 

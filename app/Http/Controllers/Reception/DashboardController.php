@@ -18,7 +18,7 @@ class DashboardController extends Controller
      * PhysicalRooms.status enum in DB: Available / Booked / Occupied / OutOfService
      */
     private const ROOM_AVAILABLE = 'Available';
-    private const ROOM_BOOKED    = 'Booked';
+    private const ROOM_BOOKED    = 'Booked';        // (We won't rely on DB Booked, we overlay in UI)
     private const ROOM_OCCUPIED  = 'Occupied';
     private const ROOM_OOS       = 'OutOfService';
 
@@ -37,7 +37,6 @@ class DashboardController extends Controller
 
     private function statusSet(string $canonicalUpperSnake): array
     {
-        // Return both variants so queries work regardless of what is stored.
         return match ($canonicalUpperSnake) {
             self::ST_CONFIRMED   => [self::ST_CONFIRMED,   self::ST_LEG_CONFIRMED],
             self::ST_CHECKED_IN  => [self::ST_CHECKED_IN,  self::ST_LEG_CHECKED_IN],
@@ -96,7 +95,7 @@ class DashboardController extends Controller
         $date       = $request->get('date') ?: now()->toDateString();
         $view       = $request->get('view', 'today'); // today | upcoming | recent
 
-        $status     = $request->get('status');        // confirmed/checked_in/checked_out/cancelled (UI)
+        $status     = $request->get('status');
         $roomTypeId = $request->get('room_type_id');
         $q          = trim((string) $request->get('q', ''));
 
@@ -127,11 +126,6 @@ class DashboardController extends Controller
         $bookingsQuery = Booking::query()
             ->with(['roomType', 'guest', 'physicalRoom']);
 
-        /**
-         * ✅ FIX: SQLite doesn't support MySQL FIELD()
-         * - MySQL/MariaDB => FIELD()
-         * - SQLite/others => CASE ordering
-         */
         $driver = DB::getDriverName();
 
         if ($driver === 'mysql') {
@@ -155,9 +149,7 @@ class DashboardController extends Controller
             ");
         }
 
-        $bookingsQuery
-            ->orderBy('check_in')
-            ->orderByDesc('id');
+        $bookingsQuery->orderBy('check_in')->orderByDesc('id');
 
         if ($view === 'today') {
             $bookingsQuery
@@ -185,7 +177,6 @@ class DashboardController extends Controller
             $view = 'today';
         }
 
-        // Status filter from UI: confirmed/checked_in/checked_out/cancelled
         if ($status) {
             $status = strtolower(trim($status));
             $bookingsQuery->whereIn('status', match ($status) {
@@ -199,7 +190,6 @@ class DashboardController extends Controller
 
         if ($roomTypeId) $bookingsQuery->where('room_type_id', $roomTypeId);
 
-        // ✅ PRODUCTION search: search snapshot first + then guest table
         if ($q !== '') {
             $bookingsQuery->where(function ($sub) use ($q) {
                 $sub->where('code', 'like', "%{$q}%")
@@ -253,35 +243,143 @@ class DashboardController extends Controller
         return view('reception.bookings.show', compact('booking', 'availableRooms'));
     }
 
+    /**
+     * ✅ ROOMS BOARD (Premium + realistic booked overlay)
+     */
     public function rooms(Request $request)
     {
-        $this->syncPhysicalRoomStatusesForToday();
+        $date = $request->get('date') ?: now()->toDateString();
+
+        // Keep board correct for selected date
+        $this->syncPhysicalRoomStatusesForDate($date);
 
         $statusRaw = $request->get('status');
         $status    = $this->normalizeRoomStatusFilter($statusRaw);
 
+        // Load rooms per type (apply filter only to the visible list)
         $roomTypes = RoomType::with(['physicalRooms' => function ($q) use ($status) {
             if ($status) $q->where('status', $status);
             $q->orderBy('room_number');
         }])->orderBy('name')->get();
 
+        // TBD rooms (room_type_id null)
         $tbdRoomsQuery = PhysicalRoom::query()->whereNull('room_type_id')->orderBy('room_number');
         if ($status) $tbdRoomsQuery->where('status', $status);
         $tbdRooms = $tbdRoomsQuery->get();
+
+        /**
+         * ✅ REALISTIC COUNTS + VISUAL BOOKED ROOMS
+         * - booked_count comes from CONFIRMED overlapping bookings (even if no room assigned)
+         * - visualBookedRoomIds marks some AVAILABLE tiles as "BOOKED" to represent holds
+         */
+        $countsByType = [];
+        $visualBookedRoomIdsByType = [];
+
+        foreach ($roomTypes as $rt) {
+
+            // Full list (unfiltered) for correct counts and selection
+            $allRooms = PhysicalRoom::query()
+                ->where('room_type_id', $rt->id)
+                ->orderBy('room_number')
+                ->get(['id','room_number','status']);
+
+            $total = $allRooms->count();
+            $oos   = $allRooms->where('status', self::ROOM_OOS)->count();
+
+            $confirmed = Booking::query()
+                ->where('room_type_id', $rt->id)
+                ->whereIn('status', $this->statusSet(self::ST_CONFIRMED))
+                ->whereDate('check_in', '<=', $date)
+                ->whereDate('check_out', '>', $date)
+                ->count();
+
+            $checkedIn = Booking::query()
+                ->where('room_type_id', $rt->id)
+                ->whereIn('status', $this->statusSet(self::ST_CHECKED_IN))
+                ->whereDate('check_in', '<=', $date)
+                ->whereDate('check_out', '>', $date)
+                ->count();
+
+            // serviceable inventory
+            $serviceable = max(0, $total - $oos);
+
+            // effective availability
+            $availableEffective = max(0, $serviceable - ($confirmed + $checkedIn));
+
+            $countsByType[$rt->id] = [
+                'total'     => $total,
+                'oos'       => $oos,
+                'booked'    => max(0, $confirmed - $checkedIn),
+                'occupied'  => $checkedIn,
+                'available' => $availableEffective,
+            ];
+
+            /**
+             * ✅ VISUAL BOOKED OVERLAY:
+             * We mark N rooms as booked where:
+             * N = confirmed bookings (overlapping) MINUS checked-in count (since those already show occupied)
+             */
+            $holds = max(0, $confirmed);
+
+            // If you prefer "booked = confirmed only" and "occupied separate", keep holds = confirmed
+            // If you prefer booked excludes checked-in, use this:
+            // $holds = max(0, $confirmed - $checkedIn);
+
+            // Only mark AVAILABLE & not OOS as visual-booked
+/**
+ * ✅ Real hotel logic:
+ * BOOKED = confirmed arrivals not yet checked-in
+ * OCCUPIED = checked-in
+ */
+$bookedPending = max(0, $confirmed - $checkedIn);
+
+// ✅ Update counts: booked should show ONLY pending confirmed
+$countsByType[$rt->id]['booked'] = $bookedPending;
+
+// ✅ Visual booked overlay: mark N available rooms as "BOOKED"
+$candidates = $allRooms
+    ->filter(fn ($r) => $r->status === self::ROOM_AVAILABLE)
+    ->values();
+
+$visualBooked = $candidates
+    ->take($bookedPending)
+    ->pluck('id')
+    ->map(fn ($x) => (int) $x)
+    ->all();
+
+$visualBookedRoomIdsByType[$rt->id] = $visualBooked;
+
+        }
+
+        // TBD counts
+        $tbdAll = PhysicalRoom::query()->whereNull('room_type_id')->get(['id','status']);
+        $tbdCounts = [
+            'total'     => $tbdAll->count(),
+            'oos'       => $tbdAll->where('status', self::ROOM_OOS)->count(),
+            'booked'    => 0,
+            'occupied'  => 0,
+            'available' => max(0, $tbdAll->count() - $tbdAll->where('status', self::ROOM_OOS)->count()),
+        ];
 
         return view('reception.rooms.index', [
             'roomTypes' => $roomTypes,
             'tbdRooms'  => $tbdRooms,
             'status'    => $statusRaw,
             'statusDb'  => $status,
+            'date'      => $date,
+
+            // ✅ NEW for pills + overlay
+            'countsByType' => $countsByType,
+            'tbdCounts'    => $tbdCounts,
+            'visualBookedRoomIdsByType' => $visualBookedRoomIdsByType,
         ]);
     }
 
     public function create(Request $request)
     {
         $roomTypes = RoomType::orderBy('name')->get();
-        $defaultCheckIn  = now('Africa/Dar_es_Salaam')->toDateString();
-        $defaultCheckOut = now('Africa/Dar_es_Salaam')->addDay()->toDateString();
+        $defaultCheckIn  = now()->toDateString();
+        $defaultCheckOut = now()->addDay()->toDateString();
 
         return view('reception.bookings.create', compact('roomTypes', 'defaultCheckIn', 'defaultCheckOut'));
     }
@@ -296,8 +394,6 @@ class DashboardController extends Controller
             'check_out'         => ['required', 'date', 'after:check_in'],
             'special_requests'  => ['nullable', 'string', 'max:2000'],
             'check_in_now'      => ['nullable', 'in:1'],
-
-            // ✅ Prefer physical_room_id (new). Accept room_id for backward UI safety.
             'physical_room_id'  => ['nullable', 'integer', 'exists:physical_rooms,id'],
             'room_id'           => ['nullable', 'integer', 'exists:physical_rooms,id'],
         ]);
@@ -306,18 +402,11 @@ class DashboardController extends Controller
 
         $phone = trim((string)$request->guest_phone);
 
-        /**
-         * ✅ BEST PRACTICE:
-         * - Use phone to find returning guest
-         * - DO NOT overwrite the old name automatically (avoids history rewrite)
-         * - Booking snapshot will always store the typed name anyway
-         */
         $guest = Guest::firstOrCreate(
             ['phone' => $phone],
             ['full_name' => $request->guest_name]
         );
 
-        // Optional: if guest name is empty in DB, fill it once.
         if (!$guest->full_name) {
             $guest->full_name = $request->guest_name;
             $guest->save();
@@ -339,17 +428,33 @@ class DashboardController extends Controller
             if ($checkInNow) {
                 $incomingRoomId = $request->physical_room_id ?? $request->room_id;
 
+                // ✅ Better UX: return with error instead of abort 422 page
                 if (!$incomingRoomId) {
-                    abort(422, 'Please select a physical room for immediate check-in.');
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'physical_room_id' => 'Please select a physical room for immediate check-in.',
+                    ]);
                 }
 
                 $room = PhysicalRoom::whereKey($incomingRoomId)->lockForUpdate()->firstOrFail();
 
-                if ((int)$room->room_type_id !== (int)$request->room_type_id) abort(422, 'Room type mismatch.');
-                if ($room->status === self::ROOM_OOS) abort(422, 'Room is out of service.');
+                if ((int)$room->room_type_id !== (int)$request->room_type_id) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'physical_room_id' => 'Room type mismatch.',
+                    ]);
+                }
+
+                if ($room->status === self::ROOM_OOS) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'physical_room_id' => 'Room is out of service.',
+                    ]);
+                }
 
                 $ok = $this->physicalRoomAvailableForStay((int)$room->id, $checkIn, $checkOut, null);
-                if (!$ok) abort(422, 'Selected room is not available for these dates.');
+                if (!$ok) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'physical_room_id' => 'Selected room is not available for these dates.',
+                    ]);
+                }
 
                 $room->update(['status' => self::ROOM_OCCUPIED]);
                 $physicalRoomId = $room->id;
@@ -362,7 +467,7 @@ class DashboardController extends Controller
                 'room_type_id'     => $request->room_type_id,
                 'guest_id'         => $guest->id,
 
-                // ✅ SNAPSHOT (THIS IS THE REAL FIX)
+                // ✅ snapshot
                 'guest_name'       => $request->guest_name,
                 'guest_phone'      => $request->guest_phone,
                 'guest_email'      => $guest->email ?? null,
@@ -386,25 +491,6 @@ class DashboardController extends Controller
         if (!in_array($status, $this->statusSet(self::ST_CONFIRMED), true)) {
             return back()->with('error', 'Only CONFIRMED bookings can be checked in.');
         }
-
-        $roomId = $request->input('physical_room_id');
-
-// ✅ WALK-IN SAFETY: auto-assign room if none selected
-if (!$roomId) {
-    $roomId = PhysicalRoom::where('status', 'Available')
-        ->orderBy('room_number')
-        ->value('id');
-
-    if (!$roomId) {
-        return back()->withErrors([
-            'physical_room_id' => 'No available rooms to assign.'
-        ]);
-    }
-}
-
-// Inject room id so the rest of the logic works normally
-$request->merge(['physical_room_id' => $roomId]);
-
 
         $now = now();
 
@@ -605,15 +691,17 @@ $request->merge(['physical_room_id' => $roomId]);
         return response()->json($rooms);
     }
 
-    private function syncPhysicalRoomStatusesForToday(): void
+    /**
+     * Keep physical room board aligned for a specific date.
+     * We only write Occupied vs Available; Booked is shown via overlay (visual holds).
+     */
+    private function syncPhysicalRoomStatusesForDate(string $date): void
     {
-        $today = now()->toDateString();
-
         $occupiedRoomIds = Booking::query()
             ->whereIn('status', $this->statusSet(self::ST_CHECKED_IN))
             ->whereNotNull('physical_room_id')
-            ->whereDate('check_in', '<=', $today)
-            ->whereDate('check_out', '>', $today)
+            ->whereDate('check_in', '<=', $date)
+            ->whereDate('check_out', '>', $date)
             ->pluck('physical_room_id')
             ->unique()
             ->values();

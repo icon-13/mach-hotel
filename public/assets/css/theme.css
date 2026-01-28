@@ -510,6 +510,8 @@ html[data-theme="dark"] select.form-select option{
 }
 html[data-theme="dark"] select.form-select{ color-scheme: dark; }
 
+html[data-theme="light"] .form-label{ color: #0f172a; }
+
 html[data-theme="dark"] .input-group-text{
   background: rgba(255,255,255,.06) !important;
   border-color: rgba(255,255,255,.18) !important;

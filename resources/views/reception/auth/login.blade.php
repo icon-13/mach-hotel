@@ -242,7 +242,7 @@
                         type="email"
                         name="email"
                         class="form-control rx-input"
-                        placeholder="staff@machhotel.com"
+                        placeholder="email"
                         value="{{ old('email') }}"
                         required
                         autofocus
@@ -279,6 +279,15 @@
                       </span>
                     </div>
 
+                  <div class="d-flex justify-content-between align-items-center mt-2">
+  <div></div>
+
+  <a href="{{ route('reception.forgot-password') }}" class="small text-decoration-none">
+    Forgot password?
+  </a>
+</div>
+
+
                     <div class="col-12">
                       <button type="submit" class="btn btn-gold btn-lg w-100" style="border-radius:14px;">
                         <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
@@ -289,7 +298,7 @@
                 </form>
 
                 <div class="rx-auth-foot">
-                  Unauthorized access prohibited • Mach Hotel Reception System
+                  Unauthorized access prohibited • Mach Hotel Staff Portal
                 </div>
 
               </div>

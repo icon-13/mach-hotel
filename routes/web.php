@@ -58,6 +58,13 @@ Route::prefix('reception')->name('reception.')->group(function () {
     Route::get('/logout', [ReceptionAuthController::class, 'logoutGet'])->name('logout.get');
     Route::post('/logout', [ReceptionAuthController::class, 'logout'])->name('logout');
 
+ // ✅ Staff "Forgot password" (public page)
+    Route::view('/forgot-password', 'reception.auth.forgot-password')
+        ->name('forgot-password');
+
+
+
+
     /*
     |--------------------------------------------------------------------------
     | Reception Area (Admin + Reception)

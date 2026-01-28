@@ -1,235 +1,216 @@
+{{-- resources/views/reception/account/password.blade.php --}}
+@extends('layouts.reception')
+@section('title','Reception — Change Password')
+
+@section('content')
 @php
   $rxUser  = auth('reception')->user();
   $role    = $rxUser->role ?? 'staff';
   $isAdmin = ($role === 'admin');
-  $context = $isAdmin ? 'Admin Panel' : 'Reception Desk';
 @endphp
 
-<nav class="navbar navbar-expand-lg nav-glass sticky-top rx-nav"
-     style="border-bottom:1px solid var(--border) !important;">
-  <div class="container rx-container">
+<section class="container rx-container py-4 py-lg-5">
 
-    {{-- Brand --}}
-    <a class="navbar-brand d-flex align-items-center gap-2 rx-brand"
-       href="{{ $isAdmin ? route('reception.admin.rooms.index') : route('reception.bookings.index') }}">
+  {{-- Header --}}
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-3">
+    <div>
+      <div class="text-muted small">Account</div>
+      <h2 class="mb-1">Change Password</h2>
+      <div class="text-muted">Keep your staff account secure — use a strong password.</div>
+    </div>
 
-      <span class="brand-dot d-none" id="rxBrandDot"></span>
+    <div class="d-flex gap-2 flex-wrap">
+      {{-- ✅ Back: go to bookings if exists, otherwise safe fallback to /reception --}}
+      <a class="btn btn-outline-dark"
+         href="{{ $isAdmin ? route('reception.admin.rooms.index') : url('/reception') }}">
+        <i class="bi bi-arrow-left me-1"></i> Back
+      </a>
 
-      {{-- ✅ Premium rounded logo with subtle ring --}}
-      <span class="d-inline-flex align-items-center justify-content-center"
-            style="
-              height:48px; width:48px;
-              border-radius:999px;
-              padding:2px;
-              background: linear-gradient(135deg, rgba(255,215,128,.55), rgba(255,255,255,.10));
-              box-shadow: 0 10px 28px rgba(0,0,0,.25);
-            ">
-        <img
-          src="{{ asset('brand/logo-light.png') }}"
-          data-logo-light="{{ asset('brand/logo-light.png') }}"
-          data-logo-dark="{{ asset('brand/logo-dark.png') }}"
-          alt="Mach Hotel"
-          class="brand-logo"
-          id="rxBrandLogo"
-          style="
-            height:44px; width:44px;
-            border-radius:999px;
-            object-fit:cover;
-            background: rgba(255,255,255,.08);
-          "
-        >
-      </span>
+      <a class="btn btn-outline-danger"
+         href="{{ route('reception.logout.get') }}">
+        <i class="bi bi-box-arrow-right me-1"></i> Logout
+      </a>
+    </div>
+  </div>
 
-      <div class="lh-sm rx-brand-text">
-        <div class="fw-semibold rx-brand-title d-flex align-items-center gap-2">
-          <span class="rx-brand-name">Mach Hotel</span>
-          <span class="badge rounded-pill rx-role-badge">
-            {{ $isAdmin ? 'ADMIN' : 'RECEPTION' }}
-          </span>
-        </div>
-        <div class="rx-brand-sub small">{{ $context }}</div>
-      </div>
-    </a>
+  {{-- Alerts --}}
+  @if(session('success'))
+    <div class="alert alert-success d-flex align-items-start gap-2">
+      <i class="bi bi-check2-circle fs-5"></i>
+      <div>{{ session('success') }}</div>
+    </div>
+  @endif
 
-    {{-- Toggler --}}
-    <button class="navbar-toggler" type="button"
-            data-bs-toggle="collapse" data-bs-target="#rxNav"
-            aria-controls="rxNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+  @if($errors->any())
+    <div class="alert alert-danger">
+      <div class="fw-semibold mb-1">Please fix the following:</div>
+      <ul class="mb-0">
+        @foreach($errors->all() as $e)
+          <li>{{ $e }}</li>
+        @endforeach
+      </ul>
+    </div>
+  @endif
 
-    <div class="collapse navbar-collapse" id="rxNav">
+  <div class="row g-3">
+    {{-- Form card --}}
+    <div class="col-lg-7">
+      <div class="card shadow-sm" style="background: rgba(255,255,255,.06); border: 1px solid var(--border);">
+        <div class="card-body p-3 p-md-4">
 
-      {{-- Left: Main nav --}}
-      <ul class="navbar-nav ms-lg-4 me-auto mb-2 mb-lg-0 gap-lg-1">
-
-        <li class="nav-item">
-          <a class="nav-link @if(request()->routeIs('reception.bookings.*')) active @endif"
-             href="{{ route('reception.bookings.index') }}">
-            <i class="bi bi-journal-text me-1"></i><span>Bookings</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link @if(request()->routeIs('reception.rooms.*')) active @endif"
-             href="{{ route('reception.rooms.index') }}">
-            <i class="bi bi-door-open me-1"></i><span>Rooms</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link @if(request()->routeIs('reception.bookings.create')) active @endif"
-             href="{{ route('reception.bookings.create') }}">
-            <i class="bi bi-plus-circle me-1"></i><span>Walk-in</span>
-          </a>
-        </li>
-
-        @if($isAdmin)
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle @if(request()->routeIs('reception.admin.*')) active @endif"
-               href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-shield-lock me-1"></i><span>Admin</span>
-            </a>
-
-            <ul class="dropdown-menu rx-dd">
-              <li>
-                <a class="dropdown-item" href="{{ route('reception.admin.rooms.index') }}">
-                  <i class="bi bi-grid-3x3-gap me-2"></i> Rooms Management
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item" href="{{ route('reception.admin.staff.index') }}">
-                  <i class="bi bi-people me-2"></i> Staff Accounts
-                </a>
-              </li>
-            </ul>
-          </li>
-        @endif
-
-        <li class="nav-item">
-          <a class="nav-link" href="{{ route('home') }}">
-            <i class="bi bi-globe2 me-1"></i><span>Public Site</span>
-          </a>
-        </li>
-
-        {{-- ✅ Mobile (expanded) quick actions: NO GET logout --}}
-        <li class="nav-item d-lg-none mt-2">
-          <div class="card border-0" style="background: rgba(255,255,255,.06);">
-            <div class="card-body p-2">
-              <div class="small text-muted px-1 mb-2">Quick Actions</div>
-
-              <div class="d-grid gap-2">
-                <a class="btn btn-outline-light"
-                   href="{{ route('reception.account.password') }}">
-                  <i class="bi bi-shield-lock me-1"></i> Change Password
-                </a>
-
-                {{-- ✅ POST logout (fixes 419) --}}
-                <form method="POST" action="{{ route('reception.logout') }}">
-                  @csrf
-                  <button type="submit" class="btn btn-outline-danger w-100">
-                    <i class="bi bi-box-arrow-right me-1"></i> Logout
-                  </button>
-                </form>
-
-              </div>
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="icon-pill" style="width:40px;height:40px;">
+              <i class="bi bi-shield-lock"></i>
+            </span>
+            <div>
+              <div class="fw-semibold">Update your password</div>
+              <div class="text-muted small">You’ll stay logged in on this device.</div>
             </div>
           </div>
-        </li>
 
-      </ul>
+          <form method="POST" action="{{ route('reception.account.password.update') }}" id="pwForm">
+            @csrf
 
-      {{-- Right: Actions (ALWAYS visible on desktop, still works on mobile too) --}}
-      <div class="d-flex align-items-center gap-2 rx-actions">
-
-        {{-- Theme toggle --}}
-        <button type="button" class="btn btn-sm btn-outline-light px-3"
-                id="rxThemeToggle" aria-label="Toggle theme">
-          <i class="bi bi-moon-stars"></i>
-        </button>
-
-        {{-- Profile dropdown --}}
-        <div class="dropdown">
-          <button class="btn btn-sm btn-outline-light px-3 dropdown-toggle"
-                  type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-person-circle me-1"></i>
-            <span class="d-none d-lg-inline">{{ $rxUser->name ?? 'Staff' }}</span>
-            <span class="d-lg-none">Account</span>
-          </button>
-
-          <ul class="dropdown-menu dropdown-menu-end rx-dd">
-
-            <li class="px-3 py-2">
-              <div class="fw-semibold">{{ $rxUser->name ?? 'Staff' }}</div>
-              <div class="rx-dd-muted small">{{ $rxUser->email ?? '' }}</div>
-              <div class="rx-dd-muted small">Role: {{ strtoupper($role) }}</div>
-            </li>
-
-            <li><hr class="dropdown-divider"></li>
-
-            <li>
-              <a class="dropdown-item" href="{{ route('reception.account.password') }}">
-                <i class="bi bi-shield-lock me-2"></i> Change Password
-              </a>
-            </li>
-
-            <li><hr class="dropdown-divider"></li>
-
-            @if($isAdmin)
-              <li>
-                <a class="dropdown-item" href="{{ route('reception.admin.rooms.index') }}">
-                  <i class="bi bi-grid-3x3-gap me-2"></i> Admin • Rooms
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item" href="{{ route('reception.admin.staff.index') }}">
-                  <i class="bi bi-people me-2"></i> Admin • Staff
-                </a>
-              </li>
-              <li><hr class="dropdown-divider"></li>
-            @endif
-
-            <li>
-              <a class="dropdown-item" href="{{ route('reception.bookings.index') }}">
-                <i class="bi bi-journal-text me-2"></i> Bookings
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="{{ route('reception.rooms.index') }}">
-                <i class="bi bi-door-open me-2"></i> Rooms Board
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="{{ route('home') }}">
-                <i class="bi bi-globe2 me-2"></i> Public Site
-              </a>
-            </li>
-
-            <li><hr class="dropdown-divider"></li>
-
-            {{-- ✅ POST logout inside dropdown --}}
-            <li class="px-2 pb-2">
-              <form method="POST" action="{{ route('reception.logout') }}">
-                @csrf
-                <button type="submit" class="btn btn-outline-danger w-100">
-                  <i class="bi bi-box-arrow-right me-1"></i> Logout
+            {{-- Current password --}}
+            <div class="mb-3">
+              <label class="form-label">Current password</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-key"></i></span>
+                <input
+                  type="password"
+                  name="current_password"
+                  class="form-control"
+                  required
+                  autocomplete="current-password"
+                  placeholder="Enter current password"
+                >
+                <button class="btn btn-outline-secondary" type="button" data-toggle="pw" aria-label="Show password">
+                  <i class="bi bi-eye"></i>
                 </button>
-              </form>
-            </li>
+              </div>
+              @error('current_password')
+                <div class="text-danger small mt-1">{{ $message }}</div>
+              @enderror
+            </div>
 
-          </ul>
+            {{-- New password --}}
+            <div class="mb-3">
+              <label class="form-label">New password</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                <input
+                  type="password"
+                  name="password"
+                  class="form-control"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                  placeholder="Minimum 8 characters"
+                >
+                <button class="btn btn-outline-secondary" type="button" data-toggle="pw" aria-label="Show password">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+              @error('password')
+                <div class="text-danger small mt-1">{{ $message }}</div>
+              @enderror
+
+              <div class="form-text">
+                Tip: mix letters, numbers, and symbols. Avoid common passwords.
+              </div>
+            </div>
+
+            {{-- Confirm --}}
+            <div class="mb-3">
+              <label class="form-label">Confirm new password</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-check2-circle"></i></span>
+                <input
+                  type="password"
+                  name="password_confirmation"
+                  class="form-control"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                  placeholder="Re-type new password"
+                >
+                <button class="btn btn-outline-secondary" type="button" data-toggle="pw" aria-label="Show password">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            {{-- Submit --}}
+            <div class="d-flex gap-2 flex-wrap mt-4">
+              <button class="btn btn-dark px-4" type="submit">
+                <i class="bi bi-check2-circle me-1"></i> Save password
+              </button>
+              <a class="btn btn-outline-secondary" href="{{ $isAdmin ? route('reception.admin.rooms.index') : url('/reception') }}">
+                Cancel
+              </a>
+            </div>
+
+          </form>
         </div>
-
-        {{-- ✅ Desktop visible logout (POST, not GET) --}}
-        <form method="POST" action="{{ route('reception.logout') }}" class="d-none d-lg-inline">
-          @csrf
-          <button type="submit" class="btn btn-sm btn-outline-danger px-3">
-            <i class="bi bi-box-arrow-right me-1"></i> Logout
-          </button>
-        </form>
-
       </div>
     </div>
 
+    {{-- Side info --}}
+    <div class="col-lg-5">
+      <div class="card shadow-sm" style="background: rgba(255,255,255,.06); border: 1px solid var(--border);">
+        <div class="card-body p-3 p-md-4">
+
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="icon-pill" style="width:40px;height:40px;">
+              <i class="bi bi-person-badge"></i>
+            </span>
+            <div>
+              <div class="fw-semibold">{{ $rxUser->name ?? 'Staff' }}</div>
+              <div class="text-muted small">{{ $rxUser->email ?? '' }}</div>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="text-muted small">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <i class="bi bi-shield-check"></i>
+              <span>Role: <span class="fw-semibold">{{ strtoupper($role) }}</span></span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <i class="bi bi-info-circle"></i>
+              <span>For hotels, staff changing their own password is realistic and secure.</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-triangle"></i>
+              <span>If you forget it, admin can reset it from Staff Accounts.</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
   </div>
-</nav>
+
+</section>
+
+{{-- Simple JS: toggle show/hide password --}}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-toggle="pw"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.closest('.input-group');
+      const input = group?.querySelector('input');
+      const icon = btn.querySelector('i');
+      if (!input) return;
+
+      const isPw = input.type === 'password';
+      input.type = isPw ? 'text' : 'password';
+      if (icon) icon.className = isPw ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+  });
+});
+</script>
+@endsection

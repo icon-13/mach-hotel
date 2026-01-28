@@ -20,8 +20,8 @@
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
           <input
-            class="form-control js-date-in""
-            type="text"
+            class="form-control js-date-in"
+            type="date"
             id="checkIn"
             name="check_in"
             min="{{ now('Africa/Dar_es_Salaam')->toDateString() }}"
@@ -39,7 +39,7 @@
           <span class="input-group-text"><i class="bi bi-calendar2-check"></i></span>
           <input
             class="form-control js-date-out"
-            type="text"
+            type="date"
             id="checkOut"
             name="check_out"
             min="{{ now('Africa/Dar_es_Salaam')->addDay()->toDateString() }}"
