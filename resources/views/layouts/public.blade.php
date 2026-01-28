@@ -12,6 +12,8 @@
   {{-- Performance: warm up CDN connections --}}
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+  {{-- flatPickr --}}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
   {{-- Bootstrap --}}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -33,6 +35,11 @@
       if (meta) meta.setAttribute('content', saved === 'light' ? '#f7f8fb' : '#0b0f14');
     })();
   </script>
+
+  <script>
+    src="https://cdn.jsdelivr.net/npm/flatpickr"
+  </script>
+  @stack('scripts')
 
   {{-- ✅ Tiny critical safety net (prevents ghost scroll on mobile) --}}
   <style>

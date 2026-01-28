@@ -20,12 +20,13 @@
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
           <input
-            class="form-control"
-            type="date"
+            class="form-control js-date-in""
+            type="text"
             id="checkIn"
             name="check_in"
             min="{{ now('Africa/Dar_es_Salaam')->toDateString() }}"
             value="{{ request('check_in') }}"
+            autocomplete="off"
             required
           >
         </div>
@@ -37,12 +38,13 @@
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-calendar2-check"></i></span>
           <input
-            class="form-control"
-            type="date"
+            class="form-control js-date-out"
+            type="text"
             id="checkOut"
             name="check_out"
             min="{{ now('Africa/Dar_es_Salaam')->addDay()->toDateString() }}"
             value="{{ request(key: 'check_out') }}"
+            autocomplete="off"
             required
           >
         </div>
@@ -191,4 +193,68 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('form[action*="search"]');
+  if (!form || typeof flatpickr === 'undefined') return;
+
+  const inEl  = form.querySelector('.js-date-in');
+  const outEl = form.querySelector('.js-date-out');
+  if (!inEl || !outEl) return;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const parseYMD = (s) => {
+    if (!s) return null;
+    const parts = s.split('-');
+    if (parts.length !== 3) return null;
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    d.setHours(0,0,0,0);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const inDefault  = parseYMD(inEl.value);
+  const outDefault = parseYMD(outEl.value);
+
+  const outPicker = flatpickr(outEl, {
+    dateFormat: "Y-m-d",
+    minDate: new Date(today.getTime() + 86400000),
+    defaultDate: outDefault || null,
+    allowInput: false
+  });
+
+  const inPicker = flatpickr(inEl, {
+    dateFormat: "Y-m-d",
+    minDate: today,
+    defaultDate: inDefault || null,
+    allowInput: false,
+    onChange: function(selectedDates){
+      const ci = selectedDates && selectedDates[0] ? selectedDates[0] : null;
+      if (!ci) return;
+
+      ci.setHours(0,0,0,0);
+      const minOut = new Date(ci.getTime() + 86400000);
+
+      outPicker.set('minDate', minOut);
+
+      const currentOut = outPicker.selectedDates && outPicker.selectedDates[0] ? outPicker.selectedDates[0] : null;
+      if (!currentOut || currentOut < minOut) {
+        outPicker.setDate(minOut, true);
+      }
+    }
+  });
+
+  if (inPicker.selectedDates.length && !outPicker.selectedDates.length) {
+    const ci = inPicker.selectedDates[0];
+    const minOut = new Date(ci.getTime() + 86400000);
+    outPicker.set('minDate', minOut);
+    outPicker.setDate(minOut, true);
+  }
+});
+</script>
+@endpush
+
 @endpush

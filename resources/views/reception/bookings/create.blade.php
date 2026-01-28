@@ -85,7 +85,7 @@
                   id="checkInInput"
                   value="{{ old('check_in', $defaultCheckIn) }}"
                   required
-                  class="form-control"
+                  class="form-control js-date-in"
                   min="{{ now('Africa/Dar_es_Salaam')->toDateString() }}"
                 >
               </div>
@@ -98,7 +98,7 @@
                   id="checkOutInput"
                   value="{{ old('check_out', $defaultCheckOut) }}"
                   required
-                  class="form-control"
+                  class="form-control js-date-out"
                   min="{{ now('Africa/Dar_es_Salaam')->addDay()->toDateString() }}"
                 >
               </div>
@@ -279,4 +279,131 @@ document.addEventListener('DOMContentLoaded', function () {
   if (check.checked) loadRooms(); // handles old('check_in_now') after validation errors
 });
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // ✅ Flatpickr for iOS past-date blocking
+  if (typeof flatpickr !== 'undefined') {
+    const inEl  = document.querySelector('.js-date-in');
+    const outEl = document.querySelector('.js-date-out');
+
+    if (inEl && outEl) {
+      const today = new Date(); today.setHours(0,0,0,0);
+
+      const outPicker = flatpickr(outEl, {
+        dateFormat: "Y-m-d",
+        minDate: new Date(today.getTime() + 86400000),
+        defaultDate: outEl.value || null,
+        allowInput: false
+      });
+
+      const inPicker = flatpickr(inEl, {
+        dateFormat: "Y-m-d",
+        minDate: today,
+        defaultDate: inEl.value || null,
+        allowInput: false,
+        onChange: function(selectedDates){
+          const ci = selectedDates && selectedDates[0] ? selectedDates[0] : null;
+          if (!ci) return;
+
+          ci.setHours(0,0,0,0);
+          const minOut = new Date(ci.getTime() + 86400000);
+
+          outPicker.set('minDate', minOut);
+
+          const currentOut = outPicker.selectedDates && outPicker.selectedDates[0] ? outPicker.selectedDates[0] : null;
+          if (!currentOut || currentOut < minOut) {
+            outPicker.setDate(minOut, true);
+          }
+        }
+      });
+
+      if (inPicker.selectedDates.length && !outPicker.selectedDates.length) {
+        const ci = inPicker.selectedDates[0];
+        const minOut = new Date(ci.getTime() + 86400000);
+        outPicker.set('minDate', minOut);
+        outPicker.setDate(minOut, true);
+      }
+    }
+  }
+
+  // ✅ keep your existing walk-in JS below (room loading, etc.)
+  const check = document.getElementById('checkInNow');
+  const wrap  = document.getElementById('roomPickWrap');
+  const typeSelect = document.getElementById('roomTypeSelect');
+  const roomSelect = document.getElementById('roomSelect');
+
+  const checkInInput  = document.getElementById('checkInInput');
+  const checkOutInput = document.getElementById('checkOutInput');
+
+  function toggleRoomPick() {
+    wrap.classList.toggle('d-none', !check.checked);
+  }
+
+  function buildUrl() {
+    const typeId = typeSelect.value;
+    const ci = checkInInput?.value || '';
+    const co = checkOutInput?.value || '';
+
+    const params = new URLSearchParams();
+    params.set('room_type_id', typeId);
+    params.set('check_in', ci);
+    params.set('check_out', co);
+
+    return "{{ route('reception.api.availableRooms') }}" + "?" + params.toString();
+  }
+
+  async function loadRooms() {
+    roomSelect.innerHTML = '<option value="">Loading…</option>';
+
+    const typeId = typeSelect.value;
+    const ci = checkInInput?.value;
+    const co = checkOutInput?.value;
+
+    if (!typeId) {
+      roomSelect.innerHTML = '<option value="">Select room type first…</option>';
+      return;
+    }
+    if (!ci || !co) {
+      roomSelect.innerHTML = '<option value="">Select dates first…</option>';
+      return;
+    }
+
+    try {
+      const res = await fetch(buildUrl(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const data = await res.json();
+
+      let html = '<option value="">Select a room…</option>';
+      if (!Array.isArray(data) || data.length === 0) {
+        html = '<option value="">No available rooms</option>';
+      } else {
+        data.forEach(function (r) {
+          html += '<option value="'+r.id+'">'+r.room_number+'</option>';
+        });
+      }
+      roomSelect.innerHTML = html;
+    } catch (e) {
+      roomSelect.innerHTML = '<option value="">Failed to load rooms</option>';
+    }
+  }
+
+  check.addEventListener('change', function () {
+    toggleRoomPick();
+    if (check.checked) loadRooms();
+  });
+
+  typeSelect.addEventListener('change', function () {
+    if (check.checked) loadRooms();
+  });
+
+  checkInInput?.addEventListener('change', () => { if (check.checked) loadRooms(); });
+  checkOutInput?.addEventListener('change', () => { if (check.checked) loadRooms(); });
+
+  toggleRoomPick();
+  if (check.checked) loadRooms();
+});
+</script>
+
 @endsection
