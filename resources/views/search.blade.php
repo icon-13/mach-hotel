@@ -41,7 +41,8 @@
             type="date"
             id="checkOut"
             name="check_out"
-            value="{{ request('check_out') }}"
+            min="{{ now('Africa/Dar_es_Salaam')->addDay()->toDateString() }}"
+            value="{{ request(key: 'check_out') }}"
             required
           >
         </div>

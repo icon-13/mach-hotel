@@ -280,8 +280,8 @@ class DashboardController extends Controller
     public function create(Request $request)
     {
         $roomTypes = RoomType::orderBy('name')->get();
-        $defaultCheckIn  = now()->toDateString();
-        $defaultCheckOut = now()->addDay()->toDateString();
+        $defaultCheckIn  = now('Africa/Dar_es_Salaam')->toDateString();
+        $defaultCheckOut = now('Africa/Dar_es_Salaam')->addDay()->toDateString();
 
         return view('reception.bookings.create', compact('roomTypes', 'defaultCheckIn', 'defaultCheckOut'));
     }
@@ -386,6 +386,25 @@ class DashboardController extends Controller
         if (!in_array($status, $this->statusSet(self::ST_CONFIRMED), true)) {
             return back()->with('error', 'Only CONFIRMED bookings can be checked in.');
         }
+
+        $roomId = $request->input('physical_room_id');
+
+// ✅ WALK-IN SAFETY: auto-assign room if none selected
+if (!$roomId) {
+    $roomId = PhysicalRoom::where('status', 'Available')
+        ->orderBy('room_number')
+        ->value('id');
+
+    if (!$roomId) {
+        return back()->withErrors([
+            'physical_room_id' => 'No available rooms to assign.'
+        ]);
+    }
+}
+
+// Inject room id so the rest of the logic works normally
+$request->merge(['physical_room_id' => $roomId]);
+
 
         $now = now();
 

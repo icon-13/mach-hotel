@@ -86,7 +86,7 @@
                   value="{{ old('check_in', $defaultCheckIn) }}"
                   required
                   class="form-control"
-                  min="{{ now()->toDateString() }}"
+                  min="{{ now('Africa/Dar_es_Salaam')->toDateString() }}"
                 >
               </div>
 
@@ -99,7 +99,7 @@
                   value="{{ old('check_out', $defaultCheckOut) }}"
                   required
                   class="form-control"
-                  min="{{ now()->addDay()->toDateString() }}"
+                  min="{{ now('Africa/Dar_es_Salaam')->addDay()->toDateString() }}"
                 >
               </div>
 

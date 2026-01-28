@@ -84,6 +84,49 @@
     })();
   </script>
 
+  <script>
+(function(){
+  const tzToday = "{{ now('Africa/Dar_es_Salaam')->toDateString() }}";
+
+  const inEl  = document.getElementById('check_in');
+  const outEl = document.getElementById('check_out');
+
+  if(!inEl || !outEl) return;
+
+  // Force min every time page loads (iOS safe)
+  inEl.setAttribute('min', tzToday);
+
+  function syncOutMin(){
+    const inVal = inEl.value || tzToday;
+    // check_out must be at least next day after check_in
+    const d = new Date(inVal + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    const nextDay = d.toISOString().slice(0,10);
+    outEl.setAttribute('min', nextDay);
+
+    // If user already picked an invalid check_out, auto-fix it
+    if(outEl.value && outEl.value < nextDay){
+      outEl.value = nextDay;
+    }
+  }
+
+  // If user types past date manually, snap back to today
+  inEl.addEventListener('change', () => {
+    if(inEl.value && inEl.value < tzToday){
+      inEl.value = tzToday;
+    }
+    syncOutMin();
+  });
+
+  outEl.addEventListener('change', () => {
+    syncOutMin();
+  });
+
+  syncOutMin();
+})();
+</script>
+
+
   @stack('scripts')
 </body>
 </html>

@@ -13,6 +13,7 @@ class SearchController extends Controller
         $roomTypes = collect();
 
         if ($request->filled(['check_in','check_out'])) {
+            $today =now('Africa/Dar_es_Salaam')->toDateString();
             $request->validate([  
                 'check_in'  => ['required','date','after_or_equal:today'],
                 'check_out' => ['required','date','after:check_in'],
