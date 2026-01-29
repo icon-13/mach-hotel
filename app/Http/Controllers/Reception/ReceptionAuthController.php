@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use App\Support\Audit;
+
 
 class ReceptionAuthController extends Controller
 {
@@ -83,6 +85,11 @@ class ReceptionAuthController extends Controller
             ? route('reception.admin.rooms.index')
             : route('reception.bookings.index');
 
+            Audit::log('auth.login', 'User', $user->id, [
+             'role' => $user->role,
+            ]);
+
+
         /**
          * ✅ Only respect "intended" if it points INSIDE /reception
          */
@@ -103,6 +110,10 @@ class ReceptionAuthController extends Controller
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        $user = Auth::guard('reception')->user();
+       Audit::log('auth.logout', 'User', $user?->id);
+
 
         return redirect()->route('reception.login')->with('success', 'Logged out successfully.');
     }

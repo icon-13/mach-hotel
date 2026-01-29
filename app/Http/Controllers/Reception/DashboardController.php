@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Support\Audit;
+
 
 class DashboardController extends Controller
 {
@@ -479,6 +481,15 @@ $visualBookedRoomIdsByType[$rt->id] = $visualBooked;
                 'status'           => $checkInNow ? self::ST_CHECKED_IN : self::ST_CONFIRMED,
                 'special_requests' => $request->special_requests,
             ]);
+
+            Audit::log('booking.walkin_create', 'Booking', $booking->id, [
+              'code' => $booking->code,
+              'room_type_id' => $booking->room_type_id,
+              'physical_room_id' => $booking->physical_room_id,
+              'check_in' => $booking->check_in,
+              'check_out' => $booking->check_out,
+            ]);
+
         });
 
         return redirect()->route('reception.bookings.show', $booking)
@@ -546,6 +557,10 @@ $visualBookedRoomIdsByType[$rt->id] = $visualBooked;
             ]);
         });
 
+        Audit::log('booking.checkin', 'Booking', $booking->id, [
+            'physical_room_id' => $incomingRoomId,
+        ]);
+
         return redirect()->route('reception.bookings.show', $booking)
             ->with('success', 'Checked in successfully.');
     }
@@ -578,6 +593,10 @@ $visualBookedRoomIdsByType[$rt->id] = $visualBooked;
             ]);
         });
 
+        Audit::log('booking.checkout', 'Booking', $booking->id, [
+            'physical_room_id' => $booking->physical_room_id,
+        ]);
+
         return redirect()->route('reception.bookings.show', $booking)
             ->with('success', 'Checked out successfully.');
     }
@@ -599,6 +618,9 @@ $visualBookedRoomIdsByType[$rt->id] = $visualBooked;
 
             $booking->update(['status' => self::ST_CANCELLED]);
         });
+
+        Audit::log('booking.cancel', 'Booking', $booking->id);
+
 
         return redirect()->route('reception.bookings.show', $booking)
             ->with('success', 'Booking cancelled.');
@@ -655,6 +677,11 @@ $visualBookedRoomIdsByType[$rt->id] = $visualBooked;
 
             $booking->update(['physical_room_id' => $newRoom->id]);
         });
+
+        Audit::log('booking.override_room', 'Booking', $booking->id, [
+           'to_room_id' => $newRoomId,
+        ]);
+
 
         return redirect()->route('reception.bookings.show', $booking)
             ->with('success', 'Room overridden successfully.');

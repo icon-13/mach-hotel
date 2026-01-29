@@ -102,6 +102,11 @@
                   <i class="bi bi-people me-2"></i> Staff Accounts
                 </a>
               </li>
+              <li>
+                <a class="dropdown-item" href="{{ route('reception.admin.logs.index') }}">
+                <i class="bi bi-clipboard-data me-2"></i> Audit Logs
+                </a>
+              </li>
             </ul>
           </li>
         @endif

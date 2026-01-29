@@ -7,6 +7,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use App\Support\Audit;
+
+
 
 class StaffAdminController extends Controller
 {
@@ -21,6 +24,7 @@ class StaffAdminController extends Controller
     }
 
     public function create()
+
     {
         return view('reception.admin.staff.create');
     }
@@ -70,6 +74,11 @@ class StaffAdminController extends Controller
 
         $staff->update($data);
 
+        Audit::log('staff.update', 'User', $staff->id, [
+         'updated_fields' => array_keys($data),
+         ]);
+
+
         return redirect()
             ->route('reception.admin.staff.index')
             ->with('success', 'Staff account updated.');
@@ -87,6 +96,9 @@ class StaffAdminController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        Audit::log('staff.reset_password', 'User', $staff->id, [], 'warning');
+
+
         return back()->with('success', 'Password reset successfully.');
     }
 
@@ -102,6 +114,11 @@ class StaffAdminController extends Controller
         $staff->update([
             'is_active' => ! $staff->is_active,
         ]);
+
+        Audit::log('staff.toggle_active', 'User', $staff->id, [
+         'is_active' => $staff->is_active,
+          ], 'warning');
+
 
         return back()->with('success', 'Staff status updated.');
     }

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\PhysicalRoom;
 use App\Models\RoomType;
 use Illuminate\Http\Request;
+use App\Support\Audit;
+
 
 class RoomAdminController extends Controller
 {
@@ -67,6 +69,13 @@ class RoomAdminController extends Controller
 
         $physicalRoom->update($data);
 
+        Audit::log('room.update', 'PhysicalRoom', $physicalRoom->id, [
+         'room_number' => $physicalRoom->room_number,
+         'room_type_id' => $physicalRoom->room_type_id,
+         'status' => $physicalRoom->status,
+        ]);
+
+
         return redirect()
             ->route('reception.admin.rooms.index', request()->only(['room_type_id','status']))
             ->with('success', 'Room updated successfully.');
@@ -95,6 +104,12 @@ class RoomAdminController extends Controller
         }
 
         PhysicalRoom::whereIn('room_number', $numbers)->update($payload);
+
+        Audit::log('room.bulk_assign', 'PhysicalRoom', null, [
+         'room_type_id' => $data['room_type_id'] ?? null,
+         'room_numbers' => $numbers->all(),
+        ]);
+
 
         return back()->with('success', 'Bulk update saved.');
     }

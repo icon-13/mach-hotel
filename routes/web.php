@@ -14,6 +14,7 @@ use App\Http\Controllers\Reception\Admin\RoomAdminController;
 use App\Http\Controllers\Reception\Admin\StaffAdminController;
 
 use App\Http\Controllers\Reception\AccountController;
+ use App\Http\Controllers\Reception\Admin\AuditLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,6 +62,11 @@ Route::prefix('reception')->name('reception.')->group(function () {
  // ✅ Staff "Forgot password" (public page)
     Route::view('/forgot-password', 'reception.auth.forgot-password')
         ->name('forgot-password');
+
+       
+
+    Route::get('/logs', [AuditLogController::class, 'index'])->name('logs.index');
+
 
 
 
