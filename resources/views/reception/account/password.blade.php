@@ -180,7 +180,7 @@
 
             <div class="d-flex align-items-center gap-2 mb-2">
               <i class="bi bi-info-circle"></i>
-              <span>For hotels, staff changing their own password is realistic and secure.</span>
+              <span>Change your password incase of any breach.</span>
             </div>
 
             <div class="d-flex align-items-center gap-2">

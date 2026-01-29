@@ -77,12 +77,7 @@
           </a>
         </li>
 
-        <li class="nav-item">
-          <a class="nav-link @if(request()->routeIs('reception.bookings.create')) active @endif"
-             href="{{ route('reception.bookings.create') }}">
-            <i class="bi bi-plus-circle me-1"></i><span>Walk-in</span>
-          </a>
-        </li>
+        
 
         @if($isAdmin)
           <li class="nav-item dropdown">

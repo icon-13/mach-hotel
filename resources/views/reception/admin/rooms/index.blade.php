@@ -7,7 +7,7 @@
     <div>
       <div class="text-muted small">Admin</div>
       <h4 class="mb-0">Physical Rooms (21)</h4>
-      <div class="text-muted small">Classify rooms • Set maintenance • Keep TBD hidden online</div>
+      <div class="text-muted small">Classify rooms • Set maintenance </div>
     </div>
 
     <a href="{{ route('reception.bookings.index') }}" class="btn btn-outline-secondary btn-sm">
@@ -59,7 +59,7 @@
         Reset
       </a>
       <span class="text-muted small align-self-center">
-        Tip: mark the 9 not-ready rooms as <b>OutOfService</b>. You can revert later.
+        Tip: The 9 not-ready rooms are marked as <b>OutOfService</b>. You can revert later.
       </span>
     </div>
   </form>
